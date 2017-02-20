@@ -1,0 +1,161 @@
+## Stat 290: PROJECT WORK
+## Michael Caldwell
+##84952e8be8be479d
+
+__0.__ Set up needed libraries and establish your key
+```{r, eval = TRUE}
+library(jsonlite)
+library(tibble)
+#install.packages('curl')
+#put key here
+myKey <- ""
+wuApiPrefix <- "http://api.wunderground.com/api"
+wuFormat <- ".json"
+```
+__1.__ Attempting to just get basic information out of wunderground for a zip
+
+```{r, eval = TRUE}
+# specLocation <- "CA/SAN_FRANCISCO"
+# specLocation <- "ca/san_francisco"
+#specLocation <- "CA/SAN_DIEGO"
+#either case seems to work
+# specLocation <- "ca/san_diego"
+#calling a state code does not work
+#specLocation<-"CA"
+#airport codes only work with upper case
+#does not really give the desired result, so eliminate as an option
+# specLocation <- 'SAN'
+#zip code works
+#specLocation <- '92109'
+#lat/long works
+# specLocation <- '32.71674,-117.1623'
+#pws call works, but keep in mind it returns everything within 40 miles
+#specLocation <- 'pws:KCASANDI3998'
+specLocation <- "ny/new_york"
+specLocation <- "tx/midland"
+
+wuFeature <- "geolookup"
+callAddress <- paste(paste(wuApiPrefix,myKey,wuFeature,c("q"),specLocation,sep="/"),wuFormat,sep='')
+callAddress
+callData <- fromJSON(callAddress)
+#str(callData)
+callDataPws <- as_tibble(callData$location$nearby_weather_stations$pws$station)
+callDataAp <- as_tibble(callData$location$nearby_weather_stations$airport$station)
+
+#now take a look at an expanded call getting the history - CAN SKIP THIS
+# wuFeature <- "geolookup/conditions/forecast10day/planner_02010219"
+# callAddress <- paste(paste(wuApiPrefix,myKey,wuFeature,c("q"),specLocation,sep="/"),wuFormat,sep='')
+# callAddress
+# callDataEx <- fromJSON(callAddress)
+# str(callDataEx)
+# callDataPwsEx<-as_tibble(callDataEx$location$nearby_weather_stations$pws$station)
+# #information about San Diego
+# callDataExTest<-callDataEx$current_observation$display_location
+# #still information about San Diego
+# callDataExTest<-callDataEx$current_observation$observation_location
+# callDataExTest<-as_tibble(callDataEx$current_observation$display_location)
+# #only really returning one station id, i.e. the airport for the city call
+# callDataExTest<-callDataEx$current_observation$station_id
+# #the trip information for historical contains an error field we may use
+# callDataExTest<-callDataEx$trip
+# #stops before current day
+# callDataExTest<-callDataEx$trip$period_of_record
+# #basically may just want to use average high/low temp, precipitation, dew points
+# #do we parametrize temperature (allow F or C?  - think maybe) overall metric
+# callDataExTest<-callDataEx$trip$temp_high$avg$F
+# #here creating a new tibble to capture these values
+
+# callDataExHist = tibble(
+#   date_start_day = callDataEx$trip$period_of_record$date_start$date$day
+#   ,date_start_month = callDataEx$trip$period_of_record$date_start$date$month
+#   ,date_start_year = callDataEx$trip$period_of_record$date_start$date$year
+#   ,date_end_day = callDataEx$trip$period_of_record$date_end$date$day
+#   ,date_end_month = callDataEx$trip$period_of_record$date_end$date$month
+#   ,date_end_year = callDataEx$trip$period_of_record$date_end$date$year
+#   ,temp_high_avg = callDataEx$trip$temp_high$avg$F
+#   ,temp_low_avg = callDataEx$trip$temp_low$avg$F
+#   ,precip_avg = callDataEx$trip$precip$avg$'in'
+#   ,dewpoint_high_avg = callDataEx$trip$dewpoint_high$avg$F
+#   ,dewpoint_low_avg = callDataEx$trip$dewpoint_low$avg$F
+#   ,cloud_cover_avg = callDataEx$trip$cloud_cover$cond
+# )
+
+#now go back, put in a specific weather station to see if different results
+#did not, so will attempt to spool through all of them
+
+# nrow(callDataPws)
+# dim(callDataPws)
+
+loopData <- list()
+print(Sys.time())
+for( i in 1:nrow(callDataPws) ){
+  #due to limits in the number of calls in 1 minute (10) pause
+  if( i >= 11 && i%%10 == 1){
+    print(Sys.time())
+    #the calls are fast 10 has taken as little as 5, so sleep 60
+    Sys.sleep(60)
+    print(Sys.time())
+  }
+  wuFeature <- "conditions/planner_02010219"
+  pwsId <- callDataPws[i,]$id
+  callAddress <- paste(
+    paste(
+      wuApiPrefix
+      ,myKey
+      ,wuFeature
+      ,c("q")
+      ,paste('pws:',pwsId,sep='')
+      ,sep="/"
+    )
+    ,wuFormat
+    ,sep=''
+  )
+  print(callAddress)
+  loopData[[i]] <- fromJSON(callAddress)
+}
+print(Sys.time())
+# str(loopData)
+
+#first 2 all look the same
+# loopData[[1]]$current_observation$observation_location$latitude
+# loopData[[1]]$current_observation$observation_location$longitude
+# loopData[[2]]$current_observation$observation_location$latitude
+# loopData[[2]]$current_observation$observation_location$longitude
+
+#now do a loop to see if any are different from the first - this one can be skipped
+# for( i in 1:nrow(callDataPws) ){
+#   if ( !identical( loopData[[1]]$current_observation, loopData[[i]]$current_observation ) ) {
+#       print(paste(i,"is not identical"))
+#   }
+# }
+#current conditions most are not identical, but don't know what - MISLEADING
+#check temperature
+for( i in 1:nrow(callDataPws) ){
+  if ( !identical( loopData[[1]]$current_observation$temp_f, loopData[[i]]$current_observation$temp_f ) ) {
+      print(paste(i,"is not identical"))
+  }
+}
+#the temperature was only different in 1
+
+
+
+for( i in 1:nrow(callDataPws) ){
+  if ( !identical( loopData[[1]]$trip, loopData[[i]]$trip ) ) {
+      print(paste(i,"is not identical"))
+  }
+}
+#only 1 is not identical in history at all, not even getting into specifics
+
+#not getting enough variation in city or zip, or lat/long for San Diego
+
+#get more, 4 out of 20 for San Francisco
+
+#try east coast - NYC - no different temps, no different history
+#Charlotte, nc had 1
+#rural = MUCH BETTER, midland tx = gets more distance and 50% variation in
+#temperature and history
+
+```
+
+
+
