@@ -1,6 +1,5 @@
 ## Stat 290: PROJECT WORK
 ## Michael Caldwell
-##84952e8be8be479d
 
 __0.__ Set up needed libraries and establish your key
 ```{r, eval = TRUE}
