@@ -1,12 +1,14 @@
-# function to retrieve longtidue and lattitude from place names 
+# function to retrieve longtidue and lattitude from place names
 longlat <- function(addr) {
-  url = paste0("http://maps.google.com/maps/api/geocode/xml?address=", addr)
+  url = paste0("http://maps.google.com/maps/api/geocode/xml?address=",
+               addr)
   doc <- NA
-  try(doc <- xmlTreeParse(url), silent = T)
+  coord <- NA
+  try(doc <- XML::xmlTreeParse(url), silent = T)
   if (!is.na(doc[1])) {
-    root = xmlRoot(doc)
-    long = xmlValue(root[["result"]][["geometry"]][["location"]][["lng"]])
-    lat = xmlValue(root[["result"]][["geometry"]][["location"]][["lat"]])
+    root = XML::xmlRoot(doc)
+    long = XML::xmlValue(root[["result"]][["geometry"]][["location"]][["lng"]])
+    lat = XML::xmlValue(root[["result"]][["geometry"]][["location"]][["lat"]])
     coord <- c(long, lat)
     names(coord) <- c('long', 'lat')
   } else {
@@ -16,19 +18,81 @@ longlat <- function(addr) {
 }
 
 # function to find nearby cities
-findNearbyCities <- function(username, coord, distance, maxRows){
-  require(geonames)
-  options(geonamesUsername=username)
-  results <- geonames::GNfindNearbyPlaceName(lat = coord["lat"], lng = coord["long"], 
-                                           radius = distance, maxRows = maxRows)
+findNearbyCities <- function(username, coord, distance, maxRows) {
+  options(geonamesUsername = username)
+  results <-
+    geonames::GNfindNearbyPlaceName(
+      lat = coord["lat"],
+      lng = coord["long"],
+      radius = as.character(distance),
+      maxRows = as.character(maxRows),
+      style = "long"
+    )
   
-  nearbyCities <- list()
-  for (i in 1:length(results)){
-    
-    cityName <- gsub(' ', '_', results[i,]$toponymName)
-    
-    nearbyCities[[i]] <- ifelse(results[i,]$countryCode=="US", 
-                      paste(results[i,]$adminCode1, cityName, sep = '/'),  
-                      paste(cityName, results[i,]$countryId, sep = '/'))
+  nearbyCities <- as.character()
+  for (i in 1:length(unlist(results[1]))) {
+    cityName <- gsub(' ', '_', results[i, ]$toponymName)
+    nearbyCities[i] <-
+      gsub(' ',
+           '_',
+           ifelse(
+             results[i, ]$countryCode == "US",
+             paste(results[i, ]$adminCode1, cityName, sep = '/'),
+             paste(results[i, ]$countryName, cityName, sep = '/')
+           ))
   }
+  nearbyCities
+}
+
+
+queryData <- function(myKey, nearbyCities, startTime) {
+  wuApiPrefix <- "http://api.wunderground.com/api/"
+  wuFormat <- ".json"
+  weatherData <- list()
+  combinedData <- NULL
+  for (i in 1:length(nearbyCities)) {
+    wuURL <- paste(
+      wuApiPrefix,
+      myKey,
+      '/history_',
+      gsub("-", "", startTime),
+      '/q/',
+      nearbyCities[i],
+      wuFormat,
+      sep = ''
+    )
+    data <- NULL
+    data <- jsonlite::fromJSON(wuURL)
+    
+    weatherData <- NULL
+    weatherData <- data$history$observations
+    
+    year  <- weatherData$date$year
+    mon <- weatherData$date$mon
+    mday <- weatherData$date$mday
+    hour <- weatherData$date$hour
+    min <- weatherData$date$min
+    date_time <- NULL
+    date_time <- paste(year, mon, mday, hour, min, sep = '-')
+    weatherData <- cbind(date_time, weatherData,stringsAsFactors = FALSE)
+    
+    utc_year  <- weatherData$utcdate$year
+    utc_mon <- weatherData$utcdate$mon
+    utc_mday <- weatherData$utcdate$mday
+    utc_hour <- weatherData$utcdate$hour
+    utc_min <- weatherData$utcdate$min
+    utc_date_time <- NULL
+    utc_date_time <- paste(utc_year, utc_mon, utc_mday, utc_hour, utc_min, sep = '-')
+    weatherData <- cbind(utc_date_time, weatherData, stringsAsFactors = FALSE)
+    
+    city_name <- rep(nearbyCities[i], nrow(weatherData))
+    weatherData <- cbind(city_name, weatherData, stringsAsFactors = FALSE)
+    
+    weatherData$date <- NULL
+    weatherData$utcdate <- NULL
+    Sys.sleep(1)
+    combinedData <- rbind(combinedData, weatherData, stringsAsFactors = FALSE)
+  }
+  combinedData$metar <- NULL
+  combinedData
 }
