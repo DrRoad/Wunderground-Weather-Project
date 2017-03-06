@@ -106,8 +106,10 @@ maxPws <- max(maxPws,nrow(results))
 
 
 
+
 #loop to grab the pws information from the results set on cities
 for (i in 1:nrow(results)){
+  
   ##
   ## begin nan code
   ##
@@ -123,17 +125,10 @@ for (i in 1:nrow(results)){
   ##
   ## end nan code
   ##
-
+  
   ##
   ## begin mcaldwel code
   ##
-
-##
-## begin mcaldwel code
-##
-#loop to grab the pws information from the results set on cities
-for (i in 1:nrow(results)){
-
   callAddress <- paste0(wuApiPrefix, myKey, '/geolookup/q/', address, wuFormat)
   print(callAddress)
   if( i > 1 ){
@@ -151,8 +146,14 @@ for (i in 1:nrow(results)){
   else{
     allPws <- union_all(allPws,callDataPws)
   }
+  ##
+  ## end mcaldwel code
+  ##
 }
 
+##
+## begin mcaldwel code
+##
 #at this point will reduce to distinct stations
 allPws <- distinct(allPws, id, .keep_all=TRUE)
 #now if the number of rows is bigger than the maxPws cut it down
