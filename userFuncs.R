@@ -18,16 +18,29 @@ longlat <- function(addr) {
 }
 
 # function to find nearby cities
-findNearbyCities <- function(username, coord, distance, maxRows) {
+findNearbyCities <- function(username, coord, distance, maxRows, maxRowsIni=500) {
   options(geonamesUsername = username)
   results <-
     geonames::GNfindNearbyPlaceName(
       lat = coord["lat"],
       lng = coord["long"],
       radius = as.character(distance),
-      maxRows = as.character(maxRows),
+      maxRows = as.character(maxRowsIni),
+      #maxRows = as.character(maxRows),
       style = "long"
     )
+  ##
+  ## begin mcaldwel code
+  ##
+  #initial results can return just neighborhoods within 1 city
+  #which can result in same limited number of weather stations so I added maxRowsIni
+  #then cut it down, it looks like population is an indicator of legit city
+  results$population <- as.numeric(results$population)
+  results <- head( subset(results,population>0 ), as.numeric(maxRows) )
+  #we are now also going need a parammeter to limit the number of PWS
+  ##
+  ## end mcaldwel code
+  ##
   
   nearbyCities <- as.character()
   for (i in 1:length(unlist(results[1]))) {
@@ -96,3 +109,5 @@ queryData <- function(myKey, nearbyCities, startTime) {
   combinedData$metar <- NULL
   combinedData
 }
+
+

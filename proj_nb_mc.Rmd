@@ -1,0 +1,363 @@
+---
+title: "proj_nb"
+author: "Nan Bai"
+date: "February 25, 2017"
+output: html_document
+---
+
+
+__0.__ Set up needed libraries and establish your key
+```{r, eval = TRUE}
+
+require(XML)
+require(jsonlite)
+require(tibble)
+require(geonames)
+require(dplyr)
+require(ggplot2)
+require(RgoogleMaps)
+#myKey <- "407e6151ab7de146"
+myKey <- "84952e8be8be479d"
+wuApiPrefix <- "http://api.wunderground.com/api/"
+wuFormat <- ".json"
+
+opwAPIprefix <- "http://api.openweathermap.org/data/2.5/box/city?bbox="
+opwFormat <- ".json"
+personalID <- "&appid=2c9024acce426b6e2dfb9fb439ed6e45"
+
+# use geonames web service to query nearby cities
+#username <- "nan_stat290"
+username <- "mc_stats290"
+options(geonamesUsername=username)
+
+```
+
+__1.__ Actual process
+```{r, eval = TRUE}
+# startTime <- as.POSIXct("2017-02-01 2:13:46 PST")
+# endTime <- as.POSIXct("2017-02-02 2:13:46 PST")
+
+startTime <- as.Date("2017-02-01 2:13:46 PST")
+endTime <- as.Date("2017-02-02 2:13:46 PST")
+
+
+addr = "indianapolis"
+addr = "san diego"
+#addr = "midland"
+dist_long = 5;
+dist_lat = 5; 
+
+# function to retrieve longtidue and lattitude from place names 
+longlat <- function(addr) {
+  url = paste0("http://maps.google.com/maps/api/geocode/xml?address=", addr)
+  doc <- NA
+  try(doc <- xmlTreeParse(url), silent = T)
+  if (!is.na(doc[1])) {
+    root = xmlRoot(doc)
+    long = xmlValue(root[["result"]][["geometry"]][["location"]][["lng"]])
+    lat = xmlValue(root[["result"]][["geometry"]][["location"]][["lat"]])
+    coord <- c(long, lat)
+    names(coord) <- c('long', 'lat')
+  } else {
+    print(paste("Error: Could not find", addr))
+  }
+  return(coord)
+}
+
+coord <- longlat(addr)
+
+# use the box to extract its nearby cities from openWeatherMap 
+# box = paste(as.character(coord[1]-dist_long), as.character(coord[2]-dist_lat), 
+#                            as.character(coord[1]+dist_long), as.character(coord[2]+dist_lat), 
+#                            10, sep = ',')
+# opwURL <- paste0(opwAPIprefix, box,personalID)
+# opw_data <- fromJSON(opwURL)
+# cities <- opw_data$list$name
+# cities_coords <- opw_data$list$coord
+
+
+distance = "30"
+maxRows = "10"
+
+# results <- geonames::GNfindNearbyPlaceName(lat = coord["lat"], lng = coord["long"], 
+#                                            radius = distance, maxRows = maxRows)
+
+##
+## begin mcaldwel code
+##
+#initial results can return just neighborhoods within 1 city
+#which can result in same limited number of weather stations so make this larger
+maxRowsIni <- "500"
+results <- geonames::GNfindNearbyPlaceName(lat = coord["lat"], lng = coord["long"], 
+                                           radius = distance, maxRows = maxRowsIni)
+#then cut it down, it looks like population is an indicator of legit city
+results$population <- as.numeric(results$population)
+results <- head( subset(results,population>0 ), as.numeric(maxRows) )
+#we are now also going need a parammeter to limit the number of PWS
+#to keep down the number of calls since we are limited to 500 per day
+maxPws <- 9
+#however if more cities were specified than pws, default to cities
+maxPws <- max(maxPws,nrow(results))
+##
+## end mcaldwel code
+##
+
+
+##
+## begin mcaldwel code
+##
+#loop to grab the pws information from the results set on cities
+for (i in 1:nrow(results)){
+  
+  callAddress <- paste0(wuApiPrefix, myKey, '/geolookup/q/', address, wuFormat)
+  print(callAddress)
+  if( i > 1 ){
+    Sys.sleep(10)
+  }
+  callData <- fromJSON(callAddress)
+
+  callDataPws <- as_tibble(callData$location$nearby_weather_stations$pws$station)
+  callDataPws$callseq = i
+
+  #continue to stack the tibbles together, unless first pass
+  if(i==1){
+    allPws <- callDataPws
+  }
+  else{
+    allPws <- union_all(allPws,callDataPws)
+  }
+}
+
+#at this point will reduce to distinct stations
+allPws <- distinct(allPws, id, .keep_all=TRUE)
+#now if the number of rows is bigger than the maxPws cut it down
+if( nrow(allPws) > maxPws ){
+    
+  pwsSeqMin <- ( summarize(allPws, seqMin = min(callseq) ) )$seqMin
+  pwsSeqMax <- ( summarize(allPws, seqMax = max(callseq) ) )$seqMax
+  
+  pwsSeqSum <- group_by(allPws,callseq) %>%
+    summarize(count = n())
+  
+  #this is not great, as we have the potential to end up with less
+  pwsSeqSum <- mutate(
+    pwsSeqSum
+    ,keep_n=ifelse(
+      callseq==pwsSeqMin
+      ,floor(maxPws/nrow(pwsSeqSum)) + maxPws%%nrow(pwsSeqSum)
+      ,floor(maxPws/nrow(pwsSeqSum))
+    )
+  )
+  
+  keepPws <- unlist(
+      mapply(
+        function(x,y) head( subset( allPws, callseq==x), y )$id
+        ,pwsSeqSum$callseq
+        ,pwsSeqSum$keep_n
+      )
+  )
+  
+  allPws <- allPws[allPws$id %in% keepPws,]
+}
+##
+## end mcaldwel code
+##  
+
+
+##
+## begin mcaldwel code
+##
+
+#testing plotting the weather stations on a map - will later need to be folded
+#in to the class function
+bb <- qbbox(lat = allPws$lat, lon = allPws$lon)
+
+pwsMap <- GetMap.bbox(
+  bb$lonR
+  ,bb$latR
+  ,destfile = "pwsMap.png"
+  ,maptype="terrain"
+  ,markers = allPws
+  ,size=c(640,640)
+)
+
+#determine the max zoom, so that all points fit on the plot
+#zoom <- min(MaxZoom(latrange=bb$latR,lonrange=bb$lonR))
+tmp <- PlotOnStaticMap(
+    pwsMap
+    ,lat = allPws$lat
+    ,lon = allPws$lon
+    ,zoom=min(MaxZoom(latrange=bb$latR,lonrange=bb$lonR))
+    ,cex=1.5
+    ,pch=20
+    ,col=c("red")
+)
+##
+## end mcaldwel code
+##  
+
+
+
+
+#theoretical loop to grab weather data based on the station object
+#will need to convert this to the class data once built out
+
+##
+## begin nan code
+##
+weatherData <- list()
+#cannot use length here, as that is the number of variables
+for (i in 1:nrow(allPws)){
+#for (i in 1:1){  
+  
+  # query their history data from Wunderground weather 
+  # cityName <- gsub(' ', '_', results[i,]$toponymName)
+  # 
+  # address <- ifelse(results[i,]$countryCode=="US", 
+  #        paste(results[i,]$adminCode1, cityName, sep = '/'),  
+  #        paste(cityName, results[i,]$countryId, sep = '/'))
+ 
+##
+## end nan code
+##   
+  
+  ##
+  ## begin mcaldwel code
+  ##  
+  pwsId <- allPws[i,]$id
+    
+  wuURL <- paste(wuApiPrefix, myKey, '/history_',
+               gsub("-","",startTime), '/q/pws:',pwsId, wuFormat, sep = '')
+  print(wuURL)
+  ##
+  ## end mcaldwel code
+  ##  
+    
+  ##
+  ## begin nan code
+  ##  
+  data <- fromJSON(wuURL)
+  #addName <- gsub('/', '_', address)
+  data$id <- pwsId
+  weatherData[[i]] <- data
+  Sys.sleep(10)
+
+}  
+##
+## end nan code
+##
+```
+
+__JUNK__ Random Testing
+```{r, eval = TRUE}
+
+##
+## begin mcaldwel code
+##
+
+#testing pulling some of the weather again
+specLocation <- "ca/coronado"
+#coronado returned results
+specLocation <- "ca/South_Park"
+#returned results mainly around temecula
+specLocation <- "ca/Golden_Hill"
+#same results as San Diego
+specLocation <- "ca/National_City"
+
+
+wuFeature <- "geolookup"
+callAddress <- paste(paste(wuApiPrefix,myKey,wuFeature,c("q"),specLocation,sep="/"),wuFormat,sep='')
+callAddress
+
+callData <- fromJSON(callAddress)
+#str(callData)
+callDataPws <- as_tibble(callData$location$nearby_weather_stations$pws$station)
+#callDataPws2 <- as_tibble(callData$location$nearby_weather_stations$pws$station)
+#callDataAp <- as_tibble(callData$location$nearby_weather_stations$airport$station)
+
+nPws = callDataPws
+nPws$callseq = 1
+nPws2 = callDataPws2
+nPws2$callseq = 2
+#stack them together, and get distinct
+allPws <- union_all(nPws,nPws2)
+#at some point will reduce to distinct
+allPws <- distinct(allPws, id, .keep_all=TRUE)
+#now if the number of rows is bigger than the maxPws cut it down
+
+
+
+
+
+pwsSeqMin <- ( summarize(allPws, seqMin = min(callseq) ) )$seqMin
+pwsSeqMax <- ( summarize(allPws, seqMax = max(callseq) ) )$seqMax
+
+pwsSeqSum <- group_by(allPws,callseq) %>%
+  summarize(count = n())
+
+#this is not great, as we have the potential to end up with less
+pwsSeqSum <- mutate(
+  pwsSeqSum
+  ,keep_n=ifelse(
+    callseq==pwsSeqMin
+    ,floor(maxPws/nrow(pwsSeqSum)) + maxPws%%nrow(pwsSeqSum)
+    ,floor(maxPws/nrow(pwsSeqSum))
+  )
+)
+
+
+keepPws <- unlist(
+    mapply(
+      function(x,y) head( subset( allPws, callseq==x), y )$id
+      ,pwsSeqSum$callseq
+      ,pwsSeqSum$keep_n
+    )
+)
+
+allPws2 <- allPws[allPws$id %in% keepPws,]
+
+allPws[1,c("lon","lat")]
+
+# pwsMap1 <- get_map(
+#   location=allPws[1,c("lon","lat")]
+# )
+# 
+# pwsMap <- ggmap(pwsMap1)
+
+#get a boundary box for the map
+
+mymarkers = cbind.data.frame(char = c("","",""),
+  lat = c(38.898648,38.889112, 38.880940),
+  lon = c(-77.037692, -77.050273, -77.03660),
+  col = c("blue", "green", "red"))
+
+bb <- qbbox(lat = mymarkers$lat, lon = mymarkers$lon)
+
+bb <- qbbox(lat = allPws$lat, lon = allPws$lon)
+
+pwsMap <- GetMap.bbox(
+  bb$lonR
+  ,bb$latR
+  ,destfile = "pwsMap.png"
+  ,maptype="terrain"
+  ,markers = allPws
+  ,size=c(640,640)
+)
+ #determine the max zoom, so that all points fit on the plot
+#zoom <- min(MaxZoom(latrange=bb$latR,lonrange=bb$lonR))
+tmp <- PlotOnStaticMap(
+    pwsMap
+    ,lat = allPws$lat
+    ,lon = allPws$lon
+    ,zoom=min(MaxZoom(latrange=bb$latR,lonrange=bb$lonR))
+    ,cex=1.5
+    ,pch=20
+    ,col=c("red")
+)
+
+#now take the minimum sequence to dedupe
+##
+## end mcaldwel code
+##
+```
+
