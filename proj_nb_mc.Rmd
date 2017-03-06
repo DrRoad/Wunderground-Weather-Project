@@ -44,6 +44,10 @@ endTime <- as.Date("2017-02-02 2:13:46 PST")
 addr = "indianapolis"
 addr = "san diego"
 #addr = "midland"
+<<<<<<< HEAD
+#addr = "london"
+=======
+>>>>>>> 05aff5b97d23e7bd3235d5c9194f23593ede8229
 dist_long = 5;
 dist_lat = 5; 
 
@@ -103,12 +107,37 @@ maxPws <- max(maxPws,nrow(results))
 ##
 
 
+<<<<<<< HEAD
+
+#loop to grab the pws information from the results set on cities
+for (i in 1:nrow(results)){
+  ##
+  ## begin nan code
+  ##  
+  # query their history data from Wunderground weather
+  cityName <- gsub(' ', '_', results[i,]$toponymName)
+  
+  #needed to sub in the country code here, not country id
+  address <- gsub(' ','_', ifelse(results[i,]$countryCode=="US",
+        paste(results[i,]$adminCode1, cityName, sep = '/'),
+        paste(results[i, ]$countryName,cityName, sep = '/'))
+  )
+  
+  ##
+  ## end nan code
+  ##
+  
+  ##
+  ## begin mcaldwel code
+  ##
+=======
 ##
 ## begin mcaldwel code
 ##
 #loop to grab the pws information from the results set on cities
 for (i in 1:nrow(results)){
   
+>>>>>>> 05aff5b97d23e7bd3235d5c9194f23593ede8229
   callAddress <- paste0(wuApiPrefix, myKey, '/geolookup/q/', address, wuFormat)
   print(callAddress)
   if( i > 1 ){
