@@ -44,14 +44,12 @@ endTime <- as.Date("2017-02-02 2:13:46 PST")
 addr = "indianapolis"
 addr = "san diego"
 #addr = "midland"
-<<<<<<< HEAD
 #addr = "london"
-=======
->>>>>>> 05aff5b97d23e7bd3235d5c9194f23593ede8229
-dist_long = 5;
-dist_lat = 5; 
 
-# function to retrieve longtidue and lattitude from place names 
+dist_long = 5;
+dist_lat = 5;
+
+# function to retrieve longtidue and lattitude from place names
 longlat <- function(addr) {
   url = paste0("http://maps.google.com/maps/api/geocode/xml?address=", addr)
   doc <- NA
@@ -70,9 +68,9 @@ longlat <- function(addr) {
 
 coord <- longlat(addr)
 
-# use the box to extract its nearby cities from openWeatherMap 
-# box = paste(as.character(coord[1]-dist_long), as.character(coord[2]-dist_lat), 
-#                            as.character(coord[1]+dist_long), as.character(coord[2]+dist_lat), 
+# use the box to extract its nearby cities from openWeatherMap
+# box = paste(as.character(coord[1]-dist_long), as.character(coord[2]-dist_lat),
+#                            as.character(coord[1]+dist_long), as.character(coord[2]+dist_lat),
 #                            10, sep = ',')
 # opwURL <- paste0(opwAPIprefix, box,personalID)
 # opw_data <- fromJSON(opwURL)
@@ -83,7 +81,7 @@ coord <- longlat(addr)
 distance = "30"
 maxRows = "10"
 
-# results <- geonames::GNfindNearbyPlaceName(lat = coord["lat"], lng = coord["long"], 
+# results <- geonames::GNfindNearbyPlaceName(lat = coord["lat"], lng = coord["long"],
 #                                            radius = distance, maxRows = maxRows)
 
 ##
@@ -92,7 +90,7 @@ maxRows = "10"
 #initial results can return just neighborhoods within 1 city
 #which can result in same limited number of weather stations so make this larger
 maxRowsIni <- "500"
-results <- geonames::GNfindNearbyPlaceName(lat = coord["lat"], lng = coord["long"], 
+results <- geonames::GNfindNearbyPlaceName(lat = coord["lat"], lng = coord["long"],
                                            radius = distance, maxRows = maxRowsIni)
 #then cut it down, it looks like population is an indicator of legit city
 results$population <- as.numeric(results$population)
@@ -107,37 +105,35 @@ maxPws <- max(maxPws,nrow(results))
 ##
 
 
-<<<<<<< HEAD
 
 #loop to grab the pws information from the results set on cities
 for (i in 1:nrow(results)){
   ##
   ## begin nan code
-  ##  
+  ##
   # query their history data from Wunderground weather
   cityName <- gsub(' ', '_', results[i,]$toponymName)
-  
+
   #needed to sub in the country code here, not country id
   address <- gsub(' ','_', ifelse(results[i,]$countryCode=="US",
         paste(results[i,]$adminCode1, cityName, sep = '/'),
         paste(results[i, ]$countryName,cityName, sep = '/'))
   )
-  
+
   ##
   ## end nan code
   ##
-  
+
   ##
   ## begin mcaldwel code
   ##
-=======
+
 ##
 ## begin mcaldwel code
 ##
 #loop to grab the pws information from the results set on cities
 for (i in 1:nrow(results)){
-  
->>>>>>> 05aff5b97d23e7bd3235d5c9194f23593ede8229
+
   callAddress <- paste0(wuApiPrefix, myKey, '/geolookup/q/', address, wuFormat)
   print(callAddress)
   if( i > 1 ){
@@ -161,13 +157,13 @@ for (i in 1:nrow(results)){
 allPws <- distinct(allPws, id, .keep_all=TRUE)
 #now if the number of rows is bigger than the maxPws cut it down
 if( nrow(allPws) > maxPws ){
-    
+
   pwsSeqMin <- ( summarize(allPws, seqMin = min(callseq) ) )$seqMin
   pwsSeqMax <- ( summarize(allPws, seqMax = max(callseq) ) )$seqMax
-  
+
   pwsSeqSum <- group_by(allPws,callseq) %>%
     summarize(count = n())
-  
+
   #this is not great, as we have the potential to end up with less
   pwsSeqSum <- mutate(
     pwsSeqSum
@@ -177,7 +173,7 @@ if( nrow(allPws) > maxPws ){
       ,floor(maxPws/nrow(pwsSeqSum))
     )
   )
-  
+
   keepPws <- unlist(
       mapply(
         function(x,y) head( subset( allPws, callseq==x), y )$id
@@ -185,12 +181,12 @@ if( nrow(allPws) > maxPws ){
         ,pwsSeqSum$keep_n
       )
   )
-  
+
   allPws <- allPws[allPws$id %in% keepPws,]
 }
 ##
 ## end mcaldwel code
-##  
+##
 
 
 ##
@@ -223,7 +219,7 @@ tmp <- PlotOnStaticMap(
 )
 ##
 ## end mcaldwel code
-##  
+##
 
 
 
@@ -237,41 +233,41 @@ tmp <- PlotOnStaticMap(
 weatherData <- list()
 #cannot use length here, as that is the number of variables
 for (i in 1:nrow(allPws)){
-#for (i in 1:1){  
-  
-  # query their history data from Wunderground weather 
+#for (i in 1:1){
+
+  # query their history data from Wunderground weather
   # cityName <- gsub(' ', '_', results[i,]$toponymName)
-  # 
-  # address <- ifelse(results[i,]$countryCode=="US", 
-  #        paste(results[i,]$adminCode1, cityName, sep = '/'),  
+  #
+  # address <- ifelse(results[i,]$countryCode=="US",
+  #        paste(results[i,]$adminCode1, cityName, sep = '/'),
   #        paste(cityName, results[i,]$countryId, sep = '/'))
- 
+
 ##
 ## end nan code
-##   
-  
+##
+
   ##
   ## begin mcaldwel code
-  ##  
+  ##
   pwsId <- allPws[i,]$id
-    
+
   wuURL <- paste(wuApiPrefix, myKey, '/history_',
                gsub("-","",startTime), '/q/pws:',pwsId, wuFormat, sep = '')
   print(wuURL)
   ##
   ## end mcaldwel code
-  ##  
-    
+  ##
+
   ##
   ## begin nan code
-  ##  
+  ##
   data <- fromJSON(wuURL)
   #addName <- gsub('/', '_', address)
   data$id <- pwsId
   weatherData[[i]] <- data
   Sys.sleep(10)
 
-}  
+}
 ##
 ## end nan code
 ##
@@ -350,7 +346,7 @@ allPws[1,c("lon","lat")]
 # pwsMap1 <- get_map(
 #   location=allPws[1,c("lon","lat")]
 # )
-# 
+#
 # pwsMap <- ggmap(pwsMap1)
 
 #get a boundary box for the map
