@@ -17,6 +17,7 @@ require(dplyr)
 require(ggplot2)
 require(RgoogleMaps)
 require(R6)
+require(mapproj)
 #myKey <- "407e6151ab7de146"
 myKey <- "84952e8be8be479d"
 wuApiPrefix <- "http://api.wunderground.com/api/"
@@ -324,46 +325,46 @@ Pws <- R6Class(
 
     #either gets the entire vector specified, or only retrieves those with the id passed
     ,getId = function(pwsId = NA) {
-      if( is.na(pwsId) ){ private$id }
+      if( all(is.na(pwsId)) ){ private$id }
       else{ private$id[private$id %in% pwsId] }
     }
     ,getLat = function(pwsId = NA) {
-      if( is.na(pwsId) ){ private$lat }
+      if( all(is.na(pwsId)) ){ private$lat }
       else{ private$lat[private$id %in% pwsId] }
     }
 
     ,getLon = function(pwsId = NA) {
-      if( is.na(pwsId) ){ private$lon }
+      if( all(is.na(pwsId)) ){ private$lon }
       else{ private$lon[private$id %in% pwsId] }
     }
 
     ,getNeighborhood= function(pwsId = NA) {
-      if( is.na(pwsId) ){ private$neighborhood }
+      if( all(is.na(pwsId)) ){ private$neighborhood }
       else{ private$neighborhood[private$id %in% pwsId] }
     }
 
     ,getCity= function(pwsId = NA) {
-      if( is.na(pwsId) ){ private$city }
+      if( all(is.na(pwsId)) ){ private$city }
       else{ private$city[private$id %in% pwsId] }
     }
 
     ,getState= function(pwsId = NA) {
-      if( is.na(pwsId) ){ private$state }
+      if( all(is.na(pwsId)) ){ private$state }
       else{ private$state[private$id %in% pwsId] }
     }
 
     ,getCountry = function(pwsId = NA) {
-      if( is.na(pwsId) ){ private$country }
+      if( all(is.na(pwsId)) ){ private$country }
       else{ private$country[private$id %in% pwsId] }
     }
 
     ,getDistance_km= function(pwsId = NA) {
-      if( is.na(pwsId) ){ private$distance_km }
+      if( all(is.na(pwsId)) ){ private$distance_km }
       else{ private$distance_km[private$id %in% pwsId] }
     }
 
     ,getDistance_mi= function(pwsId = NA) {
-      if( is.na(pwsId) ){ private$distance_mi }
+      if( all(is.na(pwsId)) ){ private$distance_mi }
       else{ private$distance_mi[private$id %in% pwsId] }
     }
 
@@ -421,24 +422,24 @@ Pws <- R6Class(
     ,plot = function() {
       # data <- private$data
       # ggplot2::qplot(data$date, data$price, data = data, geom = "line")
-      
+
       #can only plot with a lat and long
       if( !is.na(private$lat) && !is.na(private$lon) ){
-      
+
         bb <- RgoogleMaps::qbbox(lat = private$lat, lon = private$lon)
-        
+
         mymarkers <-paste0(
           as.vector(
             mapply(
-              function(a,b,c) paste0("&markers=color:red|label:",a,"|",b,"," ,c)
+              function(a,b,c) paste0("&markers=color:red|label:",substr(a,1,1),"|",b,"," ,c)
               ,private$id
               ,private$lat
               ,private$lon
-            ) 
+            )
           )
           ,collapse=""
         )
-
+        #satellite, terrain, hybrid, and mobile
         pwsMap <- RgoogleMaps::GetMap.bbox(
           bb$lonR
           ,bb$latR
@@ -447,8 +448,8 @@ Pws <- R6Class(
           ,markers = mymarkers
           ,size=c(640,640)
         )
-        
-   
+
+
         RgoogleMaps::PlotOnStaticMap(
             pwsMap
             ,lat = private$lat
@@ -459,7 +460,7 @@ Pws <- R6Class(
             ,col=c("red")
         )
       }  #end if have lat and lon for plotting
-    }   
+    }
   )
   ,private = list(
     id              = character(0)
@@ -495,7 +496,7 @@ tr6$plot()
 #attempt to make a single one
 tr6single = Pws$new(
   id            = "TEST"
-  ,lat          = 32.71674	
+  ,lat          = 32.71674
   ,lon          = -117.1623
   ,city         = "SAN DIEGO"
   ,state        = "CA"
@@ -544,7 +545,7 @@ tr6$getTibble(pwsCity="La Mesa",pwsDistanceLte = 3)
 tr6$getTibble(pwsDistanceLte = 2)
 #right now any value that produces nothing is an issue
 
-#paste0("&markers=color:blue|label:S|","40.702147,-74.015794&markers=color:green|label:G|40.711614,-74.012318#&markers=","color:red|color:red|label:C|40.718217,-73.998284"),     
+#paste0("&markers=color:blue|label:S|","40.702147,-74.015794&markers=color:green|label:G|40.711614,-74.012318#&markers=","color:red|color:red|label:C|40.718217,-73.998284"),
 
 paste0(
   as.vector(
@@ -553,7 +554,7 @@ paste0(
       ,tr6$getId()
       ,tr6$getLat()
       ,tr6$getLon()
-    ) 
+    )
   )
   ,collapse=""
 )
@@ -675,7 +676,53 @@ tmp <- PlotOnStaticMap(
     ,col=c("red")
 )
 
-#now take the minimum sequence to dedupe
+
+bb <- qbbox(lat = allPws$lat, lon = allPws$lon)
+
+tmarkers <-paste0(
+  as.vector(
+    mapply(
+      function(a,b,c) paste0("&markers=color:red|label:",substr(a,1,1),"|",b,"," ,c)
+      ,allPws$id
+      ,allPws$lat
+      ,allPws$lon
+    )
+  )
+  ,collapse=""
+)
+#satellite, terrain, hybrid, and mobile
+pwsMap <- RgoogleMaps::GetMap.bbox(
+  bb$lonR
+  ,bb$latR
+  ,destfile = "pwsMap.png"
+  ,maptype="terrain"
+  ,markers = tmarkers
+  ,size=c(640,640)
+)
+
+RgoogleMaps::PlotOnStaticMap(
+    pwsMap
+    ,lat = allPws$lat
+    ,lon = allPws$lon
+    ,zoom=min(MaxZoom(latrange=bb$latR,lonrange=bb$lonR))
+    ,cex=1.5
+    ,pch=20
+    ,col=c("red")
+)
+
+#jpeg::writeJPEG(("yes"))
+
+#new map attempt
+#http://www.molecularecologist.com/2012/09/making-maps-with-r/
+
+# 
+# map(database= "world", ylim=c(45,90), xlim=c(-160,-50), col="grey80", fill=TRUE, projection="gilbert", orientation= c(90,0,225))
+# 
+# coord <- mapproject(allPws$lon, allPws$lat, proj="gilbert", orientation=c(90, 0, 225))  #convert points to projected lat/long
+# points(coord, pch=20, cex=1.2, col="red")  #plot converted points
+
+#attempt to extract the Weather data into certain stuff
+chk=weatherData$response
 ##
 ## end mcaldwel code
 ##
