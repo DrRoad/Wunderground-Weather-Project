@@ -1,14 +1,19 @@
 # function to retrieve longtidue and lattitude from place names
 longlat <- function(addr) {
+  # remove empty space from addr to prepare for query
+  addr <- gsub(' ', '', addr)
   url = paste0("http://maps.google.com/maps/api/geocode/xml?address=",
                addr)
-  doc <- NA
-  coord <- NA
-  try(doc <- XML::xmlTreeParse(url), silent = T)
-  if (!is.na(doc[1])) {
-    root = XML::xmlRoot(doc)
-    long = XML::xmlValue(root[["result"]][["geometry"]][["location"]][["lng"]])
-    lat = XML::xmlValue(root[["result"]][["geometry"]][["location"]][["lat"]])
+  doc <- NULL
+  coord <- NULL
+  try(doc <- xml2::read_xml(x = url), silent = T)
+  if (!is.null(doc[1])) {
+    long_xpath <- "//result/geometry/location/lng"
+    lat_xpath <- "//result/geometry/location/lat"
+    long <-
+      xml2::xml_text(xml2::xml_contents(xml2::xml_find_all(x = doc, xpath = long_xpath)))
+    lat <-
+      xml2::xml_text(xml2::xml_contents(xml2::xml_find_all(x = doc, xpath = lat_xpath)))
     coord <- c(long, lat)
     names(coord) <- c('long', 'lat')
   } else {
@@ -17,97 +22,192 @@ longlat <- function(addr) {
   return(coord)
 }
 
-# function to find nearby cities
-findNearbyCities <- function(username, coord, distance, maxRows, maxRowsIni=500) {
-  options(geonamesUsername = username)
-  results <-
-    geonames::GNfindNearbyPlaceName(
-      lat = coord["lat"],
-      lng = coord["long"],
-      radius = as.character(distance),
-      maxRows = as.character(maxRowsIni),
-      #maxRows = as.character(maxRows),
-      style = "long"
-    )
-  ##
-  ## begin mcaldwel code
-  ##
-  #initial results can return just neighborhoods within 1 city
-  #which can result in same limited number of weather stations so I added maxRowsIni
-  #then cut it down, it looks like population is an indicator of legit city
-  results$population <- as.numeric(results$population)
-  results <- head( subset(results,population>0 ), as.numeric(maxRows) )
-  #we are now also going need a parammeter to limit the number of PWS
-  ##
-  ## end mcaldwel code
-  ##
-  
-  nearbyCities <- as.character()
-  for (i in 1:length(unlist(results[1]))) {
-    cityName <- gsub(' ', '_', results[i, ]$toponymName)
-    nearbyCities[i] <-
-      gsub(' ',
-           '_',
-           ifelse(
-             results[i, ]$countryCode == "US",
-             paste(results[i, ]$adminCode1, cityName, sep = '/'),
-             paste(results[i, ]$countryName, cityName, sep = '/')
-           ))
+# function to find nearby polulated cities
+findNearbyCities <-
+  function(username,
+           coord,
+           distance,
+           maxRows) {
+    geoAPI <- "http://api.geonames.org/findNearbyPlaceNameJSON?"
+    url <-
+      paste(
+        geoAPI,
+        'lat=',
+        coord['lat'],
+        '&lng=',
+        coord['long'],
+        '&stype=long',
+        '&radius=',
+        distance,
+        '&maxRows=',
+        maxRows,
+        '&cities=cities1000',
+        '&username=',
+        username,
+        sep = ''
+      )
+    
+    data = jsonlite::fromJSON(url)
+    
+    
+    # display error message to user
+    if (length(data$status) > 0) {
+      stop(
+        paste(
+          "error code ",
+          data$status$value,
+          " from server: ",
+          data$status$message,
+          sep = ""
+        )
+      )
+    }
+    
+    results = data[['geonames']]
+    
+    nearbyCities <- as.character()
+    for (i in 1:length(unlist(results[1]))) {
+      cityName <- gsub(' ', '_', results[i, ]$toponymName)
+      nearbyCities[i] <-
+        gsub(' ',
+             '_',
+             ifelse(
+               results[i, ]$countryCode == "US",
+               paste(results[i, ]$adminCode1, cityName, sep = '/'),
+               paste(results[i, ]$countryName, cityName, sep = '/')
+             ))
+    }
+    nearbyCities
   }
-  nearbyCities
-}
 
 
-queryData <- function(myKey, nearbyCities, startTime) {
+
+##
+## begin mcaldwel code
+##
+
+# function to find all nearby weather stations
+findPWS <- function(myKey, nearbyCities) {
   wuApiPrefix <- "http://api.wunderground.com/api/"
   wuFormat <- ".json"
-  weatherData <- list()
-  combinedData <- NULL
+  allPws <- NULL
+  
   for (i in 1:length(nearbyCities)) {
-    wuURL <- paste(
-      wuApiPrefix,
-      myKey,
-      '/history_',
-      gsub("-", "", startTime),
-      '/q/',
-      nearbyCities[i],
-      wuFormat,
-      sep = ''
-    )
-    data <- NULL
-    data <- jsonlite::fromJSON(wuURL)
+    callAddress <-
+      paste0(wuApiPrefix,
+             myKey,
+             '/geolookup/q/',
+             nearbyCities[i],
+             wuFormat)
+    callData <- jsonlite::fromJSON(callAddress)
+    Sys.sleep(10)
+    print(callAddress)
     
-    weatherData <- NULL
-    weatherData <- data$history$observations
+    callDataPws <-
+      callData$location$nearby_weather_stations$pws$station
     
-    year  <- weatherData$date$year
-    mon <- weatherData$date$mon
-    mday <- weatherData$date$mday
-    hour <- weatherData$date$hour
-    min <- weatherData$date$min
-    date_time <- NULL
-    date_time <- paste(year, mon, mday, hour, min, sep = '-')
-    weatherData <- cbind(date_time, weatherData,stringsAsFactors = FALSE)
+    callDataPws$pwsNo = 1:nrow(callDataPws)
+    allPws <- rbind(allPws, callDataPws)
     
-    utc_year  <- weatherData$utcdate$year
-    utc_mon <- weatherData$utcdate$mon
-    utc_mday <- weatherData$utcdate$mday
-    utc_hour <- weatherData$utcdate$hour
-    utc_min <- weatherData$utcdate$min
-    utc_date_time <- NULL
-    utc_date_time <- paste(utc_year, utc_mon, utc_mday, utc_hour, utc_min, sep = '-')
-    weatherData <- cbind(utc_date_time, weatherData, stringsAsFactors = FALSE)
-    
-    city_name <- rep(nearbyCities[i], nrow(weatherData))
-    weatherData <- cbind(city_name, weatherData, stringsAsFactors = FALSE)
-    
-    weatherData$date <- NULL
-    weatherData$utcdate <- NULL
-    Sys.sleep(1)
-    combinedData <- rbind(combinedData, weatherData, stringsAsFactors = FALSE)
   }
-  combinedData$metar <- NULL
-  combinedData
+  
+  allPws <- dplyr::distinct(allPws, id, .keep_all = TRUE)
+  # Due to call limit per day, we limit the max num of pws per city
+  allPws <- subset(allPws, pwsNo <= 5)
+  
 }
 
+##
+## end mcaldwel code
+##
 
+# function to query history data for all weather stations
+queryHistory <-
+  function(myKey, nearbyStations, startDate, endDate) {
+    combinedData <- as.data.frame(NULL)
+    duration  = as.numeric(as.Date(endDate) - as.Date(startDate) + 1)
+    
+    
+    for (i in 1:nrow(nearbyStations)) {
+      for (j in 1:duration) {
+        
+        weatherData <-
+          queryData(myKey, nearbyStations$id[i], as.character(as.Date(startDate) + j - 1))
+        Sys.sleep(10)
+        
+        # combine pws data frame with weather data
+        weatherData$neighborhood <- nearbyStations$neighborhood[i]
+        weatherData$city <- nearbyStations$city[i]
+        weatherData$state <- nearbyStations$state[i]
+        weatherData$country <- nearbyStations$country[i]
+        weatherData$lat <- nearbyStations$lat[i]
+        weatherData$lon <- nearbyStations$lon[i]
+        weatherData$distance_km <- nearbyStations$distance_km[i]
+        weatherData$distance_mi <- nearbyStations$distance_mi[i]
+          
+      }
+
+        combinedData <-
+          plyr::rbind.fill(combinedData, weatherData)
+        
+      }
+      
+      combinedData
+    }
+
+# function to extract weather data for individual PWS
+queryData <- function(myKey, pwsid, qTime) {
+  wuApiPrefix <- "http://api.wunderground.com/api/"
+  wuFormat <- ".json"
+  
+  wuURL <- paste(
+    wuApiPrefix,
+    myKey,
+    '/history_',
+    gsub("-", "", qTime),
+    '/q/',
+    paste0("pws:", pwsid),
+    wuFormat,
+    sep = ''
+  )
+  
+  data <- jsonlite::fromJSON(wuURL)
+  print(wuURL)
+  
+  weatherData <- data$history$observations
+  
+  year  <- weatherData$date$year
+  mon <- weatherData$date$mon
+  mday <- weatherData$date$mday
+  hour <- weatherData$date$hour
+  min <- weatherData$date$min
+  
+  date_time <- paste(year, mon, mday, hour, min, sep = '-')
+  weatherData <-
+    cbind(date_time, weatherData, stringsAsFactors = FALSE)
+  
+  utc_year  <- weatherData$utcdate$year
+  utc_mon <- weatherData$utcdate$mon
+  utc_mday <- weatherData$utcdate$mday
+  utc_hour <- weatherData$utcdate$hour
+  utc_min <- weatherData$utcdate$min
+  
+  utc_date_time <-
+    paste(utc_year, utc_mon, utc_mday, utc_hour, utc_min, sep = '-')
+  weatherData <-
+    cbind(utc_date_time, weatherData, stringsAsFactors = FALSE)
+  
+  addr_name <- rep(pwsid, nrow(weatherData))
+  weatherData <-
+    cbind(pwsid, weatherData, stringsAsFactors = FALSE)
+  
+  weatherData$date <- NULL
+  weatherData$utcdate <- NULL
+  weatherData$metar <- NULL
+  weatherData$solarradiation <- NULL
+  weatherData$UV <- NULL
+  weatherData$softwaretype <- NULL
+  
+  as.data.frame(weatherData)
+  
+}

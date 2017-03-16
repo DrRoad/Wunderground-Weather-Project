@@ -9,88 +9,75 @@ output: html_document
 __0.__ Set up needed libraries and establish your key
 ```{r, eval = TRUE}
 
-require(XML)
-require(jsonlite)
-require(tibble)
+setClass("weatherData", representation(pwsid = "character", data = "data.frame"))
 
-myKey <- "407e6151ab7de146"
-wuApiPrefix <- "http://api.wunderground.com/api/"
-wuFormat <- ".json"
+setMethod(f = "show", signature = "weatherData",
+          definition = function(object) {
+              cat(sprintf("PWS ID: %s \n", object@pwsid))
+              if (nrow(object@data) > 0) {
+                  cat(sprintf("%d data points\n", nrow(object@data)))
+              } else {
+                  cat("No data\n")
+              }
+          })
 
-opwAPIprefix <- "http://api.openweathermap.org/data/2.5/box/city?bbox="
-opwFormat <- ".json"
-personalID <- "&appid=2c9024acce426b6e2dfb9fb439ed6e45"
+setGeneric("getPWS", function(object) standardGeneric("getPWS") )
+setMethod("getPWS", "weatherData",
+          function(object) object@pwsid
+          )
+setGeneric("getData", function(object) standardGeneric("getData") )
+setMethod("getData", "weatherData",
+          function(object) object@data
+          )
 
 
-# startTime <- as.POSIXct("2017-02-01 2:13:46 PST")
-# endTime <- as.POSIXct("2017-02-02 2:13:46 PST")
-
-startTime <- as.Date("2017-02-01 2:13:46 PST")
-endTime <- as.Date("2017-02-02 2:13:46 PST")
-
-
-addr = "indianapolis"
-dist_long = 5;
-dist_lat = 5; 
-
-# function to retrieve longtidue and lattitude from place names 
-longlat <- function(addr) {
-  url = paste0("http://maps.google.com/maps/api/geocode/xml?address=", addr)
-  doc <- NA
-  try(doc <- xmlTreeParse(url), silent = T)
-  if (!is.na(doc[1])) {
-    root = xmlRoot(doc)
-    long = xmlValue(root[["result"]][["geometry"]][["location"]][["lng"]])
-    lat = xmlValue(root[["result"]][["geometry"]][["location"]][["lat"]])
-    coord <- c(long, lat)
-    names(coord) <- c('long', 'lat')
-  } else {
-    print(paste("Error: Could not find", addr))
-  }
-  return(coord)
-}
-
-coord <- longlat(addr)
-
-# use the box to extract its nearby cities from openWeatherMap 
-# box = paste(as.character(coord[1]-dist_long), as.character(coord[2]-dist_lat), 
-#                            as.character(coord[1]+dist_long), as.character(coord[2]+dist_lat), 
-#                            10, sep = ',')
-# opwURL <- paste0(opwAPIprefix, box,personalID)
-# opw_data <- fromJSON(opwURL)
-# cities <- opw_data$list$name
-# cities_coords <- opw_data$list$coord
-
-# use geonames web service to query nearby cities
-username <- "nan_stat290"
-options(geonamesUsername=username)
-distance = "30"
-maxRows = "10"
-results <- geonames::GNfindNearbyPlaceName(lat = coord["lat"], lng = coord["long"], 
-                                           radius = distance, maxRows = maxRows)
-
-weatherData <- list()
-for (i in 1:length(results)){
-  
-# query their history data from Wunderground weather 
-  cityName <- gsub(' ', '_', results[i,]$toponymName)
-
-  address <- ifelse(results[i,]$countryCode=="US", 
-         paste(results[i,]$adminCode1, cityName, sep = '/'),  
-         paste(cityName, results[i,]$countryId, sep = '/'))
+weatherDataValidity <- function(object) {
+    retVal <- NULL
+    if (!is.data.frame(object@data)) {
+        retVal <- c(retVal, "Data slot is not a data frame!")
+    }
     
-  wuURL <- paste(wuApiPrefix, myKey, '/history_',
-               gsub("-","",startTime), '/q/', address, wuFormat, sep = '')
-  data <- fromJSON(wuURL)
-  addName <- gsub('/', '_', address)
-  weatherData[[i]] <- data
-  Sys.sleep(10)
-  
-  
-  
+    dfNames <- sort(names(object@data))
+    
+    expectedNames <- c("utc_date_time", "date_time", "tempm", "tempi", "dewptm", "dewpti", "hum", "wspdm", "wspdi", "wgustm", "wgusti", "wdird", "wdire", "pressurem", "pressurei", "windchillm", "windchilli", "heatindexm", "heatindexi", "precip_ratem", "precip_ratei", "precip_totalm", "precip_totali")
+    
+    if (length(expectedNames) != length(dfNames) ||
+        !all.equal(expectedNames, dfNames)) {
+        stop("Bad data frame columns in value")
+    }
+
+    if (!all.equal(dfNames, expectedNames)) {
+        retVal <- c(retVal, "Names of data frame columns are incorrect!")
+    }
+    if (length(object@pwsid) == 0 || nchar(object@pwsid) == 0) {
+        retVal <- c(retVal, "Bad PWS ID")
+    }
+    if (is.null(retVal))
+        TRUE
+    else
+        retVal
 }
 
+setValidity("weatherData", weatherDataValidity)
+
+setMethod("initialize", "weatherData",
+          function (.Object, pwsid, data) {
+              if (missing(pwsid) || missing(data)) {
+                  stop("pwsid and data required")
+              }
+              .Object@pwsid <- pwsid
+              .Object@data <- data
+              validObject(.Object)
+              .Object
+          })
 
 
+setMethod("plot", "weatherData",
+          function(x, y, ...) {
+              data <- x@data
+              qplot(data$date_time, data$tempm, data = data, geom = "line")
+          })
+
+      
 ```
 

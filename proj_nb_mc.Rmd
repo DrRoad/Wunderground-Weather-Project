@@ -27,10 +27,6 @@ myKey <- "84952e8be8be479d"
 wuApiPrefix <- "http://api.wunderground.com/api/"
 wuFormat <- ".json"
 
-opwAPIprefix <- "http://api.openweathermap.org/data/2.5/box/city?bbox="
-opwFormat <- ".json"
-personalID <- "&appid=2c9024acce426b6e2dfb9fb439ed6e45"
-
 # use geonames web service to query nearby cities
 #username <- "nan_stat290"
 username <- "mc_stats290"
@@ -173,6 +169,7 @@ for (i in 1:nrow(results)){
 #at this point will reduce to distinct stations
 allPws <- distinct(allPws, id, .keep_all=TRUE)
 #now if the number of rows is bigger than the maxPws cut it down
+
 if( nrow(allPws) > maxPws ){
 
   pwsSeqMin <- ( summarize(allPws, seqMin = min(callseq) ) )$seqMin
@@ -198,6 +195,7 @@ if( nrow(allPws) > maxPws ){
         ,pwsSeqSum$keep_n
       )
   )
+  
 
   allPws <- allPws[allPws$id %in% keepPws,]
 }
