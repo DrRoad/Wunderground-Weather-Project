@@ -1,0 +1,277 @@
+---
+title: "plotFunc.Rmd"
+author: "Michael Caldwell"
+date: "2017-0316"
+output: html_document
+---
+
+
+__0.__ Set up needed libraries and establish your key
+```{r, eval = TRUE}
+
+require(XML)
+require(jsonlite)
+require(tibble)
+require(geonames)
+require(dplyr)
+require(ggplot2)
+require(RgoogleMaps)
+require(R6)
+require(magrittr)
+
+#include the pwsClass file
+source("pwsClass.R")
+#myKey <- "407e6151ab7de146"
+myKey <- "84952e8be8be479d"
+wuApiPrefix <- "http://api.wunderground.com/api/"
+wuFormat <- ".json"
+
+opwAPIprefix <- "http://api.openweathermap.org/data/2.5/box/city?bbox="
+opwFormat <- ".json"
+personalID <- "&appid=2c9024acce426b6e2dfb9fb439ed6e45"
+
+# use geonames web service to query nearby cities
+#username <- "nan_stat290"
+username <- "mc_stats290"
+options(geonamesUsername=username)
+
+```
+
+
+__3.__ Begin attempting to plot weather history and improve graphs
+```{r, eval = TRUE}
+
+weatherData2 <- readRDS("weatherData_20170315151953.rds")
+
+##
+## begin mcaldwel code
+##
+
+#hopefully this can be moved outside, during the weather retrieval to format it into a
+#tibble or data frame
+wd2  <- tibble(
+  id         = unlist( weatherData2$pwsid     )
+  ,lat       = unlist( weatherData2$lat       )
+  ,lon       = unlist( weatherData2$lon       )
+  ,utc_date_time = as.POSIXct( unlist( weatherData2$utc_date_time ), format="%Y-%m-%d-%H-%M" )
+  ,utc_date  = as.Date( as.POSIXct( unlist( weatherData2$utc_date_time ), format="%Y-%m-%d-%H-%M" ) )
+  ,tempm     = as.numeric( unlist( weatherData2$tempm     ) )
+  ,tempi     = as.numeric( unlist( weatherData2$tempi     ) )
+  ,dewptm    = as.numeric( unlist( weatherData2$dewptm    ) )
+  ,dewpti    = as.numeric( unlist( weatherData2$dewpti    ) )
+  ,pressurem = as.numeric( unlist( weatherData2$pressurem ) )
+  ,pressurei = as.numeric( unlist( weatherData2$pressurei ) )
+  ,hum       = as.numeric( unlist( weatherData2$hum       ) )
+)
+
+##
+## end mcaldwel code
+##
+
+##
+## begin mcaldwel code
+##
+
+# parameters
+# wtbl - data frame/tibble containing weather data
+# wvar - weather variable to plot(
+# aggtype - type of aggregation to do to the weather variable
+#startDate = "2017-01-01"
+plotWeather <- function(
+  wtbl
+  ,plottype="m"
+  ,wvar="tempi"
+  ,aggtype="mean"
+  ,startDate = NA
+  ,endDate = NA
+){
+  #check to make sure parameters make sense and are accounted for
+  if( !( wvar %in% c("tempm","tempi","dewptm","dewpti","pressurem","pressurei","hum") ) ){
+    stop("INVALID WEATHER VARIABLE PASSED TO plotWeather")
+  }
+  if( !( aggtype %in% c("mean","max","min","range") ) ){
+    stop("INVALID AGGREGATION TYPE PASSED TO plotWeather")
+  }
+  if( !( plottype %in% c("m","g") ) ){
+    stop("INVALID PLOT TYPE PASSED TO plotWeather")
+  }  
+  
+  #get a working copy
+  mywtbl <- wtbl
+  #reduce down dates if needed
+  if( !is.na(startDate) ){
+    mywtbl <- subset( mywtbl, utc_date >= as.Date( startDate ) )
+  }
+  if( !is.na(endDate) ){
+    mywtbl <- subset( mywtbl, utc_date <= as.Date( endDate ) )
+  }
+
+  #combine the variable with the aggregation type to later use for var names
+  wvaragg <- paste0(wvar,aggtype)
+
+  
+  #need a check for integrity of the data set columns
+  #weather variable summary
+  #if mapping, do not need date included
+  if( plottype == "m" ){
+    wvarSum <- mywtbl %>% dplyr::group_by(id,lat,lon)
+  }
+  else if(plottype == "g"){
+    wvarSum <- mywtbl %>% dplyr::group_by(id,utc_date)
+  }
+  
+  wvarSum <- wvarSum %>%
+    dplyr::group_by(id,lat,lon) %>%
+    dplyr::summarize(
+      tempmmean = mean(tempm, na.rm=TRUE)
+      ,tempmmin = min(tempm, na.rm=TRUE)
+      ,tempmmax = max(tempm, na.rm=TRUE)
+
+      ,tempimean = mean(tempi, na.rm=TRUE)
+      ,tempimin = min(tempi, na.rm=TRUE)
+      ,tempimax = max(tempi, na.rm=TRUE)
+
+      ,dewptmmean = mean(dewptm, na.rm=TRUE)
+      ,dewptmmin = min(dewptm, na.rm=TRUE)
+      ,dewptmmax = max(dewptm, na.rm=TRUE)
+
+      ,dewptimean = mean(dewpti, na.rm=TRUE)
+      ,dewptimin = min(dewpti, na.rm=TRUE)
+      ,dewptimax = max(dewpti, na.rm=TRUE)
+
+      ,pressuremmean = mean(pressurem, na.rm=TRUE)
+      ,pressuremmin = min(pressurem, na.rm=TRUE)
+      ,pressuremmax = max(pressurem, na.rm=TRUE)
+
+      ,pressureimean = mean(pressurei, na.rm=TRUE)
+      ,pressureimin = min(pressurei, na.rm=TRUE)
+      ,pressureimax = max(pressurei, na.rm=TRUE)
+
+      ,hummean = mean(hum, na.rm=TRUE)
+      ,hummin = min(hum, na.rm=TRUE)
+      ,hummax = max(hum, na.rm=TRUE)
+    ) %>%
+    dplyr::mutate(
+      tempmrange = tempmmax - tempmmin
+      ,tempirange = tempimax - tempimin
+      ,dewptmrange = dewptmmax - dewptmmin
+      ,dewptirange = dewptimax - dewptimin
+      ,pressuremrange = pressuremmax - pressuremmin
+      ,pressureirange = pressureimax - pressureimin
+      ,humrange = hummax - hummin
+    )
+ 
+  #now need to cut down lat/lon/labels based on data available, i.e. exclude missings
+  #wvarSum
+  #wvarFilt <- !is.na(wvarSum$tempimean) & !is.nan(wvarSum$tempimean)
+  #in order to get it to take a character parameter, additional complexity
+  wvarFilt <- as.vector(
+    !is.na( unlist( wvarSum[,wvaragg] ) )
+    & !is.nan( unlist( wvarSum[,wvaragg] ) )
+  )
+
+  #map specific
+  if( plottype == "m" ){
+    bb <- RgoogleMaps::qbbox(lat = wvarSum$lat, lon = wvarSum$lon)
+  
+    #satellite, terrain, hybrid, and mobile
+    wvarMap <- RgoogleMaps::GetMap.bbox(
+      bb$lonR
+      ,bb$latR
+      ,destfile = "pwsMap.png"
+      ,maptype="terrain"
+      #,maptype="satellite"
+      ,size=c(640,640)
+    )
+  
+  
+    wvarMapLat <- wvarSum$lat[wvarFilt]
+    wvarMapLon <- wvarSum$lon[wvarFilt]
+    #now the labels will show the metric and aggregation chosen
+    wvarMapLabel <- as.character( round(
+      as.vector( unlist( wvarSum[,wvaragg] ) )[wvarFilt]
+    ,0) )
+  
+    tmpMap <- RgoogleMaps::PlotOnStaticMap(
+      wvarMap
+      ,lat = wvarMapLat
+      ,lon = wvarMapLon
+      ,zoom=min(maxZoom(latrange=bb$latR,lonrange=bb$lonR))
+      ,cex=0
+      ,pch=20
+      ,col=c("black")
+    )
+  
+  
+    RgoogleMaps::TextOnStaticMap(
+      wvarMap
+      ,lat = wvarMapLat
+      ,lon = wvarMapLon
+      ,labels=wvarMapLabel
+      ,add=TRUE
+      ,cex=1
+      ,col=c("red")
+      ,offset=0.5
+    )
+  }
+}
+
+##
+## end mcaldwel code
+##
+
+#cycle through the tests
+
+
+plotWeather(wtbl=wd2,wvar="tempi",aggtype="mean")
+
+plotWeather(
+  wtbl=wd2
+  ,wvar="tempi"
+  ,aggtype="mean"
+  ,startDate = '2017-03-01'
+  ,endDate = '2017-03-11'
+)
+
+plotWeather(wtbl=wd2,wvar="tempi",aggtype="max")
+plotWeather(wtbl=wd2,wvar="tempi",aggtype="min")
+plotWeather(wtbl=wd2,wvar="tempi",aggtype="range")
+
+
+plotWeather(wtbl=wd2,wvar="tempm",aggtype="mean")
+plotWeather(wtbl=wd2,wvar="tempm",aggtype="max")
+plotWeather(wtbl=wd2,wvar="tempm",aggtype="min")
+plotWeather(wtbl=wd2,wvar="tempm",aggtype="range")
+
+
+
+plotWeather(wtbl=wd2,wvar="dewptm",aggtype="mean")
+plotWeather(wtbl=wd2,wvar="dewptm",aggtype="max")
+plotWeather(wtbl=wd2,wvar="dewptm",aggtype="min")
+
+plotWeather(wtbl=wd2,wvar="dewpti",aggtype="mean")
+plotWeather(wtbl=wd2,wvar="dewpti",aggtype="max")
+plotWeather(wtbl=wd2,wvar="dewpti",aggtype="min")
+
+
+plotWeather(wtbl=wd2,wvar="pressurem",aggtype="mean")
+plotWeather(wtbl=wd2,wvar="pressurem",aggtype="max")
+plotWeather(wtbl=wd2,wvar="pressurem",aggtype="min")
+
+plotWeather(wtbl=wd2,wvar="pressurei",aggtype="mean")
+plotWeather(wtbl=wd2,wvar="pressurei",aggtype="max")
+plotWeather(wtbl=wd2,wvar="pressurei",aggtype="min")
+
+plotWeather(wtbl=wd2,wvar="hum",aggtype="mean")
+plotWeather(wtbl=wd2,wvar="hum",aggtype="max")
+plotWeather(wtbl=wd2,wvar="hum",aggtype="min")
+
+
+#ensure fails
+plotWeather(wtbl=wd2,wvar="junk")
+
+
+```
+
+
+
