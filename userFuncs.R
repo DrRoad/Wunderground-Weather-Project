@@ -1,3 +1,9 @@
+
+##
+## begin nan code
+##
+
+
 # function to retrieve longtidue and lattitude from place names
 longlat <- function(addr) {
   # remove empty space from addr to prepare for query
@@ -67,19 +73,23 @@ findNearbyCities <-
     
     nearbyCities <- as.character()
     for (i in 1:length(unlist(results[1]))) {
-      cityName <- gsub(' ', '_', results[i, ]$toponymName)
+      cityName <- gsub(' ', '_', results[i,]$toponymName)
       nearbyCities[i] <-
         gsub(' ',
              '_',
              ifelse(
-               results[i, ]$countryCode == "US",
-               paste(results[i, ]$adminCode1, cityName, sep = '/'),
-               paste(results[i, ]$countryName, cityName, sep = '/')
+               results[i,]$countryCode == "US",
+               paste(results[i,]$adminCode1, cityName, sep = '/'),
+               paste(results[i,]$countryName, cityName, sep = '/')
              ))
     }
     nearbyCities
   }
 
+
+##
+## end nan code
+##
 
 
 ##
@@ -100,20 +110,29 @@ findPWS <- function(myKey, nearbyCities) {
              nearbyCities[i],
              wuFormat)
     callData <- jsonlite::fromJSON(callAddress)
-    Sys.sleep(10)
+    Sys.sleep(1)
     print(callAddress)
     
-    callDataPws <-
-      callData$location$nearby_weather_stations$pws$station
-    
-    callDataPws$pwsNo = 1:nrow(callDataPws)
-    allPws <- rbind(allPws, callDataPws)
-    
+    if (exists("location", where = callData)
+        && exists("nearby_weather_stations", where = callData$location)
+        &&
+        exists("pws", where = callData$location$nearby_weather_stations)
+        &&
+        exists("station", where = callData$location$nearby_weather_stations$pws)) {
+      callDataPws <-
+        tibble::as_tibble(callData$location$nearby_weather_stations$pws$station)
+      
+      callDataPws$pwsNo = 1:nrow(callDataPws)
+      if(is.null(allPws)){
+        allPws <- callDataPws
+      }
+      else{
+        allPws <- dplyr::union_all(allPws,callDataPws)
+      }
+    }
   }
   
   allPws <- dplyr::distinct(allPws, id, .keep_all = TRUE)
-  # Due to call limit per day, we limit the max num of pws per city
-  allPws <- subset(allPws, pwsNo <= 5)
   
 }
 
@@ -121,16 +140,22 @@ findPWS <- function(myKey, nearbyCities) {
 ## end mcaldwel code
 ##
 
+
+##
+## begin nan code
+##
+
 # function to query history data for all weather stations
 queryHistory <-
   function(myKey, nearbyStations, startDate, endDate) {
+    # Due to call limit per day, we limit the max num of pws per city
+    nearbyStations <- subset(nearbyStations, pwsNo <= 5)
     combinedData <- as.data.frame(NULL)
     duration  = as.numeric(as.Date(endDate) - as.Date(startDate) + 1)
     
     
     for (i in 1:nrow(nearbyStations)) {
       for (j in 1:duration) {
-        
         weatherData <-
           queryData(myKey, nearbyStations$id[i], as.character(as.Date(startDate) + j - 1))
         Sys.sleep(10)
@@ -144,16 +169,16 @@ queryHistory <-
         weatherData$lon <- nearbyStations$lon[i]
         weatherData$distance_km <- nearbyStations$distance_km[i]
         weatherData$distance_mi <- nearbyStations$distance_mi[i]
-          
-      }
-
-        combinedData <-
-          plyr::rbind.fill(combinedData, weatherData)
         
       }
       
-      combinedData
+      combinedData <-
+        plyr::rbind.fill(combinedData, weatherData)
+      
     }
+    
+    combinedData
+  }
 
 # function to extract weather data for individual PWS
 queryData <- function(myKey, pwsid, qTime) {
@@ -211,3 +236,51 @@ queryData <- function(myKey, pwsid, qTime) {
   as.data.frame(weatherData)
   
 }
+
+
+# This function is to subset weather data according to user input 
+summarizeData <- function(weatherData, distance, startDate, endDate, param, unit, calType){
+  data <- weatherData %>%
+    dplyr::filter(as.Date(utc_date_time)>=startDate && as.Date(utc_date_time)<=endDate) %>%
+    dplyr::filter(distance_km<=distance) 
+  
+  if (unit=='metric'){
+  
+    if (param=='temperature') colNum = match('tempm', names(data))
+    if (param=='dew point') colNum = match('dewptm', names(data))
+    if (param=='humidity') colNum = match('hum', names(data))
+    if (param=='wind speed') colNum = match('wspdm', names(data))
+    if (param=='wind gust') colNum = match('wgustm', names(data))
+    if (param=='wind direction') colNum = match('wdird', names(data))
+    if (param=='pressure') colNum = match('pressurem', names(data))
+    if (param=='precipitation rate') colNum = match('precip_ratem', names(data))
+    if (param=='precipitation total') colNum = match('precip_ratem', names(data))}
+  
+  else{
+    
+    if (param=='temperature') colNum = match('tempi', names(data))
+    if (param=='dew point') colNum = match('dewpti', names(data))
+    if (param=='humidity') colNum = match('hum', names(data))
+    if (param=='wind speed') colNum = match('wspdi', names(data))
+    if (param=='wind gust') colNum = match('wgusti', names(data))
+    if (param=='wind direction') colNum = match('wdire', names(data))
+    if (param=='pressure') colNum = match('pressurei', names(data))
+    if (param=='precipitation rate') colNum = match('precip_ratei', names(data))
+    if (param=='precipitation total') colNum = match('precip_ratei', names(data))}
+  
+  
+  results <- data %>%
+    dplyr::select(pwsid, lat, lon, colNum) %>%
+    dplyr::group_by(pwsid)
+  
+  if (calType=='mean')  results <- dplyr::summarize(results, stat = mean(colNum))
+  if (calType=='max')  results <- dplyr::summarize(results, stat = max(colNum))
+  if (calType=='min')  results <- dplyr::summarize(results, stat = min(colNum))
+  if (calType=='range')  results <- dplyr::summarize(results, stat = range(colNum))
+  
+  results
+}
+
+##
+## end nan code
+##
