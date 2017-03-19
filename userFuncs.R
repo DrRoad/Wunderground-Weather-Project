@@ -132,6 +132,10 @@ findPWS <- function(myKey, nearbyCities) {
     }
   }
   
+  
+  
+  colNum = c(8:9)
+  allPws[colNum] <- sapply(allPws[colNum], as.numeric)
   allPws <- dplyr::distinct(allPws, id, .keep_all = TRUE)
   
 }
@@ -233,7 +237,11 @@ queryData <- function(myKey, pwsid, qTime) {
   weatherData$UV <- NULL
   weatherData$softwaretype <- NULL
   
-  as.data.frame(weatherData)
+
+  colNum = c(4:12, 15, 16, 21:24)
+  weatherData[colNum] <- sapply(weatherData[colNum], as.numeric)
+  
+  tibble::as_tibble(weatherData)
   
 }
 
@@ -273,10 +281,11 @@ summarizeData <- function(weatherData, distance, startDate, endDate, param, unit
     dplyr::select(pwsid, lat, lon, colNum) %>%
     dplyr::group_by(pwsid)
   
-  if (calType=='mean')  results <- dplyr::summarize(results, stat = mean(colNum))
-  if (calType=='max')  results <- dplyr::summarize(results, stat = max(colNum))
-  if (calType=='min')  results <- dplyr::summarize(results, stat = min(colNum))
-  if (calType=='range')  results <- dplyr::summarize(results, stat = range(colNum))
+  names(results)[4] <- 'stat'
+  if (calType=='mean')  results <- dplyr::summarize_all(results, mean,  na.rm=TRUE)
+  if (calType=='max')  results <- dplyr::summarize_all(results, max,  na.rm=TRUE)
+  if (calType=='min')  results <- dplyr::summarize_all(results, min,  na.rm=TRUE)
+  if (calType=='range')  results <- dplyr::summarize_all(results, range,  na.rm=TRUE)
   
   results
 }

@@ -42,7 +42,7 @@ options(geonamesUsername=username)
 __3.__ Begin attempting to plot weather history and improve graphs
 ```{r, eval = TRUE}
 
-weatherData2 <- readRDS("weatherData_20170315151953.rds")
+weatherData2 <- readRDS("weatherData_20170318234303.rds")
 
 ##
 ## begin mcaldwel code

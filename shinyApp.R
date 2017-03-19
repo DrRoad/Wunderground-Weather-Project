@@ -83,8 +83,7 @@ ui <- navbarPage(
                     'range')
       ),
       
-      actionButton("plotWeather", "plot data", style = 'padding:6px 14px 6px 17px'),
-      actionButton("saveWeather", "save data", style = 'padding:6px 14px 6px 14px')
+      actionButton("plotWeather", "plot data", style = 'padding:6px 14px 6px 17px')
     ),
     mainPanel(
       tabPanel("Weather Plot",
@@ -105,7 +104,7 @@ server <- function(input, output, session) {
     eventReactive(input$query, {findNearbyCities(input$username, coord(), input$distance, input$maxcities)})
   nearbyStations <- eventReactive(input$query, {findPWS(input$myKey, nearbyCities())})
   
-  historyData <- observeEvent(input$query, {
+  historyData <- eventReactive(input$query, {
     queryHistory(
       input$myKey,
       nearbyStations(),
@@ -120,7 +119,7 @@ server <- function(input, output, session) {
     results <- nearbyStations()
     results$No. <- seq(from = 1, to = nrow(results))
     results$PWS_ID <- results$id
-    inFile <- NULL
+    historyData()
     head(results[, c(11, 12, 6, 7, 1, 2, 3, 4, 8, 9)], nrow(results))
   })
   
@@ -181,8 +180,6 @@ server <- function(input, output, session) {
   ##
   
   output$plot <- renderPlot({
-    require(RgoogleMaps)
-    
     inFile <- input$file1
     if (is.null(inFile))
       return(NULL)
@@ -193,6 +190,8 @@ server <- function(input, output, session) {
     pwstibble <- dplyr::distinct(data, pwsid, lat, lon, neighborhood, city, state, country, distance_km, distance_mi, .keep_all = FALSE)
     results <- isolate(summarizeData(data, input$distance2,  as.character(input$date_range2[1]), as.character(input$date_range2[2]), input$weatherParameter, input$unit, input$statistics))
     allPws <- dplyr::left_join(results, pwstibble)
+    
+    allPws$stat <- round(allPws$stat, digits = 2)
     
     bb <- RgoogleMaps::qbbox(lat = allPws$lat, lon = allPws$lon)
     
