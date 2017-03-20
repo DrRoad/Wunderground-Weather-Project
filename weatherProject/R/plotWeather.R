@@ -14,7 +14,7 @@
 #' @export
 #' @importFrom dplyr filter group_by mutate summarize
 #' @importFrom RgoogleMaps qbbox GetMap.bbox PlotOnStaticMap TextOnStaticMap MaxZoom
-#' @importFrom ggplot2 ggplot aes geom_line xlab ylab theme
+#' @importFrom ggplot2 ggplot aes geom_line xlab ylab theme element_rect
 #'
 #' @examples
 #' data(weatherData)
@@ -53,7 +53,7 @@ plotWeather <- function(
       as.Date(endDate)
       ,error=function(e){ stop("INVALID END DATE FORMAT, NEED YYYY-MM-DD") }
     )
-    mywtbl <- dplyr::subset( mywtbl, date <= as.Date( endDate ) )
+    mywtbl <- dplyr::filter( mywtbl, date <= as.Date( endDate ) )
   }
 
   #combine the variable with the aggregation type to later use for var names
@@ -175,9 +175,9 @@ plotWeather <- function(
       xlab('Date') +
       ylab( paste0(aggtype," of ",wvar) ) +
       theme(
-        panel.background = element_rect(fill = 'white', color = 'black')
-        ,legend.box.background = element_rect(fill = 'white', color='white')
-        ,legend.key = element_rect(fill = 'white')
+        panel.background = ggplot2::element_rect(fill = 'white', color = 'black')
+        ,legend.box.background = ggplot2::element_rect(fill = 'white', color='white')
+        ,legend.key = ggplot2::element_rect(fill = 'white')
       )
 
   }  #end else plottype = g
