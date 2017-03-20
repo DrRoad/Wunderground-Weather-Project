@@ -13,3 +13,35 @@
 
 #' @name weatherProject
 NULL
+
+utils::globalVariables(names = c("id",
+                                 "utc_date_time",
+                                 "pwsid",
+                                 "lat",
+                                 "lon",
+								 "tempm",
+								 "tempi",
+								 "dewptm",
+								 "dewpti",
+								 "pressurem",
+								 "pressurei",
+								 "hum",
+								 "tempmmax",
+								 "tempmmin",
+								 "tempimax",
+								 "tempimin",
+								 "dewptmmax",
+								 "dewptmmin",
+								 "dewptimax",
+								 "dewptimin",
+								 "pressuremmax",
+								 "pressuremmin",
+								 "pressureimax",
+								 "pressureimin",
+								 "hummax",
+								 "hummin",
+								 "y",
+								 "pwsNo",
+                                 "distance_km"))
+							
+

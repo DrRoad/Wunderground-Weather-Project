@@ -13,9 +13,6 @@
 #' @importFrom dplyr filter
 #' @importFrom plyr rbind.fill
 #'
-#' @examples
-#' data(pwsData)
-#' queryHistory("407e6151ab7de146", pwsData, Sys.Date()-1, Sys.Date())
 queryHistory <-
   function(myKey, nearbyStations, startDate, endDate) {
     # Due to call limit per day, we limit the max num of pws per city
