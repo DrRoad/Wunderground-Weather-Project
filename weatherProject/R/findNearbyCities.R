@@ -10,7 +10,7 @@
 #' @return a vector of cities 
 #' 
 #' @export
-#' @importFrom jsonlite fromjson
+#' @importFrom jsonlite fromJSON
 #'
 #' @examples
 #' findNearbyCities('nan_stat290', longlat('San Francisco, CA'), '100', '5')

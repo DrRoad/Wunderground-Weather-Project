@@ -13,7 +13,7 @@
 #' @return a tibble containing the results 
 #' 
 #' @export
-#' @importFrom dplyr filter select group_by summerize_all
+#' @importFrom dplyr filter select group_by summarise_all
 #' @importFrom magrittr %>%
 #'
 #' @examples
@@ -55,10 +55,10 @@ summarizeData <- function(weatherData, distance, startDate, endDate, param, unit
     dplyr::group_by(pwsid)
   
   names(results)[4] <- 'stat'
-  if (calType=='mean')  results <- dplyr::summarize_all(results, mean,  na.rm=TRUE)
-  if (calType=='max')  results <- dplyr::summarize_all(results, max,  na.rm=TRUE)
-  if (calType=='min')  results <- dplyr::summarize_all(results, min,  na.rm=TRUE)
-  if (calType=='range')  results <- dplyr::summarize_all(results, range,  na.rm=TRUE)
+  if (calType=='mean')  results <- dplyr::summarise_all(results, mean,  na.rm=TRUE)
+  if (calType=='max')  results <- dplyr::summarise_all(results, max,  na.rm=TRUE)
+  if (calType=='min')  results <- dplyr::summarise_all(results, min,  na.rm=TRUE)
+  if (calType=='range')  results <- dplyr::summarise_all(results, range,  na.rm=TRUE)
   
   results
 }

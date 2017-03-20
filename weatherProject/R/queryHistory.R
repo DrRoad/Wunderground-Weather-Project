@@ -3,15 +3,15 @@
 #' @description Query weather history data from the specified PWS within the specified date range  
 #'
 #' @param myKey key for accessing Wunderground API 
-#' @param nearbyStations a tibble descriping PWS
+#' @param nearbyStations a tibble describing PWS
 #' @param startDate a starting date  
 #' @param endDate an end date 
 #' 
 #' @return a tibble containing weather data for all the pws within the specified date range 
 #' 
 #' @export
-#' @importFrom dplyr subset
-#' @importFrom plyr::rbind.fill
+#' @importFrom dplyr filter
+#' @importFrom plyr rbind.fill
 #'
 #' @examples
 #' data(pwsData)
@@ -19,7 +19,7 @@
 queryHistory <-
   function(myKey, nearbyStations, startDate, endDate) {
     # Due to call limit per day, we limit the max num of pws per city
-    nearbyStations <- dplyr::subset(nearbyStations, pwsNo <= 5)
+    nearbyStations <- dplyr::filter(nearbyStations, pwsNo <= 5)
     combinedData <- as.data.frame(NULL)
     duration  = as.numeric(as.Date(endDate) - as.Date(startDate) + 1)
     

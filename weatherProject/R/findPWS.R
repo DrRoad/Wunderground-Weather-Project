@@ -8,7 +8,7 @@
 #' @return a tibble descriping all PWS  
 #'
 #' @export
-#' @importFrom jsonlite fromjson
+#' @importFrom jsonlite fromJSON
 #' @importFrom tibble as_tibble
 #' @importFrom dplyr union_all distinct
 #'

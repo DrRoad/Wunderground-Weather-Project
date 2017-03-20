@@ -12,7 +12,7 @@
 #' @return NULL
 #' 
 #' @export
-#' @importFrom dplyr subset group_by mutate summarize
+#' @importFrom dplyr filter group_by mutate summarize
 #' @importFrom RgoogleMaps qbbox GetMap.bbox PlotOnStaticMap TextOnStaticMap
 #' @importFrom ggplot2 ggplot geom_line xlab ylab theme
 #'
@@ -46,7 +46,7 @@ plotWeather <- function(
       as.Date(startDate)
       ,error=function(e){ stop("INVALID START DATE FORMAT, NEED YYYY-MM-DD") }
     )
-    mywtbl <- dplyr::subset( mywtbl, utc_date_time >= as.Date( startDate ) )
+    mywtbl <- dplyr::filter( mywtbl, utc_date_time >= as.Date( startDate ) )
   }
   if( !is.na(endDate) ){
     tryCatch(
