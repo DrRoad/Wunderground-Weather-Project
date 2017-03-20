@@ -13,8 +13,8 @@
 #' 
 #' @export
 #' @importFrom dplyr filter group_by mutate summarize
-#' @importFrom RgoogleMaps qbbox GetMap.bbox PlotOnStaticMap TextOnStaticMap
-#' @importFrom ggplot2 ggplot geom_line xlab ylab theme
+#' @importFrom RgoogleMaps qbbox GetMap.bbox PlotOnStaticMap TextOnStaticMap MaxZoom
+#' @importFrom ggplot2 ggplot aes geom_line xlab ylab theme
 #'
 #' @examples
 #' data(weatherData)
@@ -143,7 +143,7 @@ plotWeather <- function(
       wvarMap
       ,lat = wvarSum$lat
       ,lon = wvarSum$lon
-      ,zoom=min(maxZoom(latrange=bb$latR,lonrange=bb$lonR))
+      ,zoom=min(RgoogleMaps::MaxZoom(latrange=bb$latR,lonrange=bb$lonR))
       ,cex=0
       ,pch=20
       ,col=c("black")
