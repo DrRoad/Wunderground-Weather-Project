@@ -25,5 +25,5 @@ Plot weather data for visualization
 }
 \examples{
 data(weatherData)
-queryData(weatherData, plottype = 'm')
+plotWeather(weatherData, plottype = 'm')
 }

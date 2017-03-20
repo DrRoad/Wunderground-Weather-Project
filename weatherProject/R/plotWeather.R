@@ -18,7 +18,7 @@
 #'
 #' @examples
 #' data(weatherData)
-#' queryData(weatherData, plottype = 'm')
+#' plotWeather(weatherData, plottype = 'm')
 plotWeather <- function(
   wtbl
   ,plottype="m"
