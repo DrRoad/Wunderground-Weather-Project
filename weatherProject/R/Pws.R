@@ -33,7 +33,7 @@
 #'   \item{\code{getDistance_mi(pwsId)}}{This method uses \code{pwsId} to determine if to get some or all (if NA) of the distances in miles in the class instance}
 #'   \item{\code{getTibble(pwsId,pwsCity,pwsState,pwsDistanceLte)}}{This method uses \code{pwsId} as  priority 1 by itself/only, \code{state} priority 2 (assumed in US) and/or \code{country} priority 3, then \code{city}, and \code{pwsDistanceLte} in km to return a tibble containing pws data}
 #'   \item{\code{print()}}{This method prints the class in the manner or a tibble}
-#'   \item{\code{plot()}}{This method produces a plot of weather station ids on a map using RgoogleMaps package}
+#'   \item{\code{plot(plottype)}}{This method \code{plottype} to determine whether p/pins or t/text (ids) to produce a plot of weather stations on a map using RgoogleMaps package}
 #' }
 #' @importFrom R6 R6Class
 #' @importFrom RgoogleMaps qbbox GetMap.bbox PlotOnStaticMap TextOnStaticMap MaxZoom
@@ -183,13 +183,11 @@ Pws <- R6::R6Class(
     }
     ,print = function() {
       print( self$getTibble() )
-      #options here for printing will follow the tibble options
-      #options(tibble.print_max = n, tibble.print_min = m)
-      #if there are more than n rows, print only the first m rows. Use options(tibble.print_max = Inf) to always show all rows.
-      #options(tibble.width = Inf)
-      #will always print all columns, regardless of the width of the screen.
     }
-    ,plot = function() {
+    ,plot = function(plottype="t") {
+      if( !( plottype %in% c("t","p") ) ){
+        stop("INVALID PLOT TYPE PASSED TO Pws class plot function")
+      }
 
       #can only plot with a lat and long
       if( !is.na(private$lat) && !is.na(private$lon) ){
@@ -197,38 +195,58 @@ Pws <- R6::R6Class(
         bb <- RgoogleMaps::qbbox(lat = private$lat, lon = private$lon)
 
 
-        #satellite, terrain, hybrid, and mobile
-        pwsMap <- RgoogleMaps::GetMap.bbox(
-          bb$lonR
-          ,bb$latR
-          ,destfile = "pwsMap.png"
-          ,maptype="terrain"
-          ,size=c(640,640)
-        )
+        #satellite, terrain, hybrid, and mobile are maptypes
+        #zooming did not seem to be doing anything good, so took it out
+        if(plottype=="t"){
+          pwsMap <- RgoogleMaps::GetMap.bbox(
+            bb$lonR
+            ,bb$latR
+            ,destfile = "pwsMap.png"
+            ,maptype="terrain"
+            ,size=c(640,640)
+          )
+
+          tmpMap <- RgoogleMaps::PlotOnStaticMap(
+            pwsMap
+            ,lat = private$lat
+            ,lon = private$lon
+            #,zoom=min(MaxZoom(latrange=bb$latR,lonrange=bb$lonR))
+            ,cex=0
+            ,pch=20
+            ,col=c("black")
+          )
 
 
-        tmpMap <- RgoogleMaps::PlotOnStaticMap(
-          pwsMap
-          ,lat = private$lat
-          ,lon = private$lon
-          ,zoom=min(MaxZoom(latrange=bb$latR,lonrange=bb$lonR))
-          ,cex=0.4
-          ,pch=20
-          ,col=c("black")
-        )
+          RgoogleMaps::TextOnStaticMap(
+            pwsMap
+            ,lat = private$lat
+            ,lon = private$lon
+            ,labels=private$id
+            ,add=TRUE
+            ,cex=0.8
+            ,col=c("red")
+          )
+        }  #end if plottype == t
+        else if(plottype == "p"){
+          pwsMap <- RgoogleMaps::GetMap.bbox(
+            bb$lonR
+            ,bb$latR
+            ,destfile = "pwsMap.png"
+            ,maptype="terrain"
+            ,markers = self$getTibble()
+            ,size=c(640,640)
+          )
 
-
-        RgoogleMaps::TextOnStaticMap(
-          pwsMap
-          ,lat = private$lat
-          ,lon = private$lon
-          ,labels=private$id
-          ,add=TRUE
-          ,cex=0.6
-          ,col=c("red")
-          ,offset=0.5
-        )
-
+          RgoogleMaps::PlotOnStaticMap(
+            pwsMap
+            ,lat = private$lat
+            ,lon = private$lon
+            #,zoom=min(MaxZoom(latrange=bb$latR,lonrange=bb$lonR))
+            ,cex=0
+            ,pch=20
+            ,col=c("red")
+          )
+        }  #end if plottype == p
       }  #end if have lat and lon for plotting
     }  #end plot function
   )

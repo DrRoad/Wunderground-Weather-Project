@@ -6,8 +6,8 @@
 #' @param plottype specify plot type. m for mapping; g for graphs.
 #' @param wvar weather parameter of interest - can have values tempm,tempi,dewptm,dewpti,pressurem,pressurei,hum, "m"s indicate metric; "i"s english
 #' @param aggtype aggregation type to roll-up the wvar - can be mean,max,min,range
-#' @param startDate start date - will be applied to the date portion of a variable called utc_date_time
-#' @param endDate end date - will be applied to the date portion of a variable called utc_date_time
+#' @param startDate start date - will be applied to the date portion of a variable called date_time
+#' @param endDate end date - will be applied to the date portion of a variable called date_time
 #'
 #' @return NULL
 #'
@@ -45,13 +45,16 @@ plotWeather <- function(
     stop("INVALID PLOT TYPE PASSED TO plotWeather")
   }
 
+  #avoid error
+  dt <- NULL
+  date_time <- NULL
+
   #get a working copy w/transformed date
   mywtbl <- dplyr::mutate(
     wtbl
-    ,utc_dt = as.Date( as.POSIXct( utc_date_time , format="%Y-%m-%d-%H-%M" ) )
+    ,dt = as.Date( substr( date_time, 1, 10  ) )
   )
-  #avoid error
-  utc_dt <- NULL
+
 
 
   #reduce down dates as needed
@@ -60,14 +63,14 @@ plotWeather <- function(
       as.Date(startDate)
       ,error=function(e){ stop("INVALID START DATE FORMAT, NEED YYYY-MM-DD") }
     )
-    mywtbl <- dplyr::filter( mywtbl, utc_dt >= as.Date( startDate ) )
+    mywtbl <- dplyr::filter( mywtbl, dt >= as.Date( startDate ) )
   }
   if( !is.na(endDate) ){
     tryCatch(
       as.Date(endDate)
       ,error=function(e){ stop("INVALID END DATE FORMAT, NEED YYYY-MM-DD") }
     )
-    mywtbl <- dplyr::filter( mywtbl, utc_dt <= as.Date( endDate ) )
+    mywtbl <- dplyr::filter( mywtbl, dt <= as.Date( endDate ) )
   }
 
   #combine the variable with the aggregation type to later use for var names
@@ -80,7 +83,7 @@ plotWeather <- function(
     wvarSum <- dplyr::group_by(mywtbl,pwsid,lat,lon)
   }
   else if(plottype == "g"){
-    wvarSum <- dplyr::group_by(mywtbl,pwsid,utc_dt)
+    wvarSum <- dplyr::group_by(mywtbl,pwsid,dt)
   }
 
 
@@ -193,7 +196,7 @@ plotWeather <- function(
     }
 
 
-    ggplot2::ggplot( data=wvarSum, aes( x = utc_dt, y = y, color=pwsid ) ) +
+    ggplot2::ggplot( data=wvarSum, aes( x = dt, y = y, color=pwsid ) ) +
       ggplot2::geom_line() +
       ggplot2::xlab('Date') +
       ggplot2::ylab( paste0(aggtype," of ",wvar) ) +
