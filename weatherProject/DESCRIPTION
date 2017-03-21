@@ -1,5 +1,5 @@
 Package: weatherProject
-Title: a package to query and visualize weather data 
+Title: a package to query and visualize weather data
 Version: 1.0
 Authors@R: c(person("Nan", "Bai", email = "nancybai@stanford.edu", role = c("aut", "cre")),person("Michael", "Caldwell", email = "t.michael.caldwell@gmail.com", role = c("aut")))
 Description: query and visualize weather data.
@@ -10,10 +10,11 @@ Imports:
 	ggplot2,
 	jsonlite,
 	magrittr,
-	plyr, 
+	plyr,
 	tibble,
 	xml2,
-	shiny
+	shiny,
+	R6
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
