@@ -1,0 +1,82 @@
+---
+title: "Weather Project Package Report"
+author: "Michael Caldwell & Nan Bai"
+date: "March 20, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(jsonlite)
+require(tibble)
+require(geonames)
+require(dplyr)
+require(ggplot2)
+require(RgoogleMaps)
+require(weatherProject)
+myKey <- "84952e8be8be479d"
+
+personalID <- "&appid=2c9024acce426b6e2dfb9fb439ed6e45"
+
+# use geonames web service to query nearby cities
+#username <- "nan_stat290"
+username <- "mc_stats290"
+options(geonamesUsername=username)
+```
+
+## Introduction
+
+The overall purposes of the weatherProject package is to empower users to be able to retrieve weather
+data utilizing Weather Underground (https://www.wunderground.com/) and subsequently visualize that 
+data in order to observe differences between microclimates within the vacinity of a city.
+
+In order to achieve that end state, there are various functions included with the package, which will
+have examples demonstrated in the following sections.  Those functions do things like retrieve latitude/longitude for a city, get other cities within the vacinity of a city, retrieve personal weather stations (PWSs) for those cities, get weather data related to PWSs, and create both map graphics and standard plots based on that data.  The mapping data is based on the RgooleMaps package, which may be outside the normal usage of our audience.  As part of the weatherProject package, a new R6 class (Pws) has been created and included to contain one or more PWSs and related attributes.
+
+In order to get the full usage of this package, as user does need to sign up for 2 different types of online keys (both of which are free) and are required parameters for many of the functiosn.  First, a key to access the wunderground API via https://www.wunderground.com/weather/api.  Second, in order to overcome some of the current limitations of the wunderground API, a username to geonames via http://www.geonames.org/login.
+
+
+## Getting Area of Interest via the longlat and findNearbyCities functions
+
+There are many constraints to the current, free version of the wunderground API such as only allowing 10 calls per minute or 500 per day.  Within many of the functions we have wait times of 10 seconds entered between calls and ability to limit number of items being returned by one function before using those results in a call to another function.
+
+However, one thing that was unanticipated is that due to the way wunderground returned that information within its limitations led to many overlapping PWSs for major metropolitan cities  In other words, there are now many PWSs reporting within each city, so that unless you are dealing with a rural area, wunderground will actually cap the number of PWSs returned to you before you have any that are even a mile apart.  As a result, the end state weather information and visualization of variation are uninteresing.  Here is an example of a pin map using the wunderground standard returned PWSs for San Diego, CA and RgoogleMaps for visualization.
+
+```{r badwunder, echo=FALSE}
+specLocation <- "CA/SAN_DIEGO"
+wuApiPrefix <- "http://api.wunderground.com/api"
+wuFormat <- ".json"
+wuFeature <- "geolookup"
+callAddress <- paste(paste(wuApiPrefix,myKey,wuFeature,c("q"),specLocation,sep="/"),wuFormat,sep='')
+callData <- fromJSON(callAddress)
+callDataPws <- as_tibble(callData$location$nearby_weather_stations$pws$station)
+bb <- RgoogleMaps::qbbox(lat = callDataPws$lat, lon = callDataPws$lon)
+#satellite, terrain, hybrid, and mobile
+pwsMap <- RgoogleMaps::GetMap.bbox(
+  bb$lonR
+  ,bb$latR
+  ,destfile = "pwsMap.png"
+  ,maptype="terrain"
+  ,markers = callDataPws
+  ,size=c(640,640)
+)
+
+tmpMap <- RgoogleMaps::PlotOnStaticMap(
+  pwsMap
+  ,lat = callDataPws$lat
+  ,lon = callDataPws$lon
+  ,zoom=min(MaxZoom(latrange=bb$latR,lonrange=bb$lonR))
+  ,cex=0.4
+  ,pch=20
+  ,col=c("red")
+)
+
+
+```
+
+
+## JUNK PLACEHOLDER
+```{r cars}
+summary(cars)
+```
+
