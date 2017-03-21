@@ -8,22 +8,24 @@ plotWeather(wtbl, plottype = "m", wvar = "tempi", aggtype = "mean",
   startDate = NA, endDate = NA)
 }
 \arguments{
-\item{wtbl}{a tibble of weather data}
+\item{wtbl}{a tibble or data fram of weather data must contain pwsid,lat,lon and all type of wvar}
 
-\item{plottype}{specify plot type}
+\item{plottype}{specify plot type. m for mapping; g for graphs.}
 
-\item{wvar}{weather parameter of interest}
+\item{wvar}{weather parameter of interest - can have values tempm,tempi,dewptm,dewpti,pressurem,pressurei,hum, "m"s indicate metric; "i"s english}
 
-\item{aggtype}{aggregate type}
+\item{aggtype}{aggregation type to roll-up the wvar - can be mean,max,min,range}
 
-\item{startDate}{start date}
+\item{startDate}{start date - will be applied to the date portion of a variable called date_time}
 
-\item{endDate}{end date}
+\item{endDate}{end date - will be applied to the date portion of a variable called date_time}
 }
 \description{
 Plot weather data for visualization
 }
 \examples{
 data(weatherData)
-plotWeather(weatherData, plottype = 'm')
+plotWeather(weatherData)
+plotWeather(wtbl=weatherData,wvar="tempi",aggtype="max", plottype = "g")
+plotWeather(wtbl=weatherData,wvar="tempi",aggtype="range",startDate = '2017-03-18',endDate ='2017-03-19', plottype="m")
 }

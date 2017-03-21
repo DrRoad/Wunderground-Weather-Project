@@ -4,19 +4,21 @@
 \alias{findPWS}
 \title{Find PWS within the cities}
 \usage{
-findPWS(myKey, nearbyCities)
+findPWS(myKey, nearbyCities, maxPerCity = 5)
 }
 \arguments{
 \item{myKey}{key to access Wunderground API}
 
 \item{nearbyCities}{a vector of city names formated as {state}/{city} for US cities and {country}/{city} for cities in other countries}
+
+\item{maxPerCity}{a numeric scalar that sets a limit on the maximum number of PWSs returned for a city that had data returned in the wunderground call}
 }
 \value{
-a tibble descriping all PWS
+a tibble descriping all PWS, which will include an id, latitude, longitude, etc.
 }
 \description{
 Find PWS within the cities
 }
 \examples{
-findPWS('407e6151ab7de146', c("CA/San_Francisco","CA/Daly_City", "CA/Sausalito"))
+findPWS('407e6151ab7de146', c("CA/San_Francisco","CA/Daly_City"))
 }
