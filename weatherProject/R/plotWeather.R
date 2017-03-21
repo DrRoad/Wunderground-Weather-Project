@@ -1,24 +1,31 @@
-#' Plot weather data for visualization 
+#' Plot weather data for visualization
 #'
-#' @description Plot weather data for visualization 
+#' @description Plot weather data for visualization
 #'
-#' @param wtbl a tibble of weather data  
-#' @param plottype specify plot type 
-#' @param wvar weather parameter of interest 
-#' @param aggtype aggregate type
-#' @param startDate start date
-#' @param endDate end date 
-#' 
+#' @param wtbl a tibble or data fram of weather data must contain pwsid,lat,lon and all type of wvar
+#' @param plottype specify plot type. m for mapping; g for graphs.
+#' @param wvar weather parameter of interest - can have values tempm,tempi,dewptm,dewpti,pressurem,pressurei,hum, "m"s indicate metric; "i"s english
+#' @param aggtype aggregation type to roll-up the wvar - can be mean,max,min,range
+#' @param startDate start date - will be applied to the date portion of a variable called utc_date_time
+#' @param endDate end date - will be applied to the date portion of a variable called utc_date_time
+#'
 #' @return NULL
-#' 
-#' @export
+#'
 #' @importFrom dplyr filter group_by mutate summarize
 #' @importFrom RgoogleMaps qbbox GetMap.bbox PlotOnStaticMap TextOnStaticMap MaxZoom
 #' @importFrom ggplot2 ggplot aes geom_line xlab ylab theme element_rect
 #'
 #' @examples
 #' data(weatherData)
-#' plotWeather(weatherData, plottype = 'm')
+#' plotWeather(weatherData)
+#' plotWeather(wtbl=weatherData,wvar="tempi",aggtype="max", plottype = "g")
+#' plotWeather(wtbl=weatherData,wvar="tempi",aggtype="range",startDate = '2017-03-18',endDate ='2017-03-19', plottype="m")
+#' @export
+
+
+##
+## begin mcaldwel code
+##
 plotWeather <- function(
   wtbl
   ,plottype="m"
@@ -38,22 +45,29 @@ plotWeather <- function(
     stop("INVALID PLOT TYPE PASSED TO plotWeather")
   }
 
-  #get a working copy
-  mywtbl <- wtbl
-  #reduce down dates if needed
+  #get a working copy w/transformed date
+  mywtbl <- dplyr::mutate(
+    wtbl
+    ,utc_dt = as.Date( as.POSIXct( utc_date_time , format="%Y-%m-%d-%H-%M" ) )
+  )
+  #avoid error
+  utc_dt <- NULL
+
+
+  #reduce down dates as needed
   if( !is.na(startDate) ){
     tryCatch(
       as.Date(startDate)
       ,error=function(e){ stop("INVALID START DATE FORMAT, NEED YYYY-MM-DD") }
     )
-    mywtbl <- dplyr::filter( mywtbl, utc_date_time >= as.Date( startDate ) )
+    mywtbl <- dplyr::filter( mywtbl, utc_dt >= as.Date( startDate ) )
   }
   if( !is.na(endDate) ){
     tryCatch(
       as.Date(endDate)
       ,error=function(e){ stop("INVALID END DATE FORMAT, NEED YYYY-MM-DD") }
     )
-    mywtbl <- dplyr::filter( mywtbl, date <= as.Date( endDate ) )
+    mywtbl <- dplyr::filter( mywtbl, utc_dt <= as.Date( endDate ) )
   }
 
   #combine the variable with the aggregation type to later use for var names
@@ -66,7 +80,7 @@ plotWeather <- function(
     wvarSum <- dplyr::group_by(mywtbl,pwsid,lat,lon)
   }
   else if(plottype == "g"){
-    wvarSum <- dplyr::group_by(mywtbl,pwsid,utc_date_time)
+    wvarSum <- dplyr::group_by(mywtbl,pwsid,utc_dt)
   }
 
 
@@ -121,6 +135,10 @@ plotWeather <- function(
 
   #map specific
   if( plottype == "m" ){
+
+    if( length(unique(wvarSum$pwsid)) > 10){
+      message("Note: The m/map plottype can become cluttered with over 10 PWS ids")
+    }
     #define a box as shown in the package
     bb <- RgoogleMaps::qbbox(lat = wvarSum$lat, lon = wvarSum$lon)
 
@@ -170,11 +188,16 @@ plotWeather <- function(
       message("Note: The g/graph plottype can become cluttered with over 5 PWS ids")
     }
 
-    ggplot2::ggplot( data=wvarSum, aes( x = utc_date_time, y = y, color=pwsid ) ) +
-      geom_line() +
-      xlab('Date') +
-      ylab( paste0(aggtype," of ",wvar) ) +
-      theme(
+    if( !is.na(startDate) &&  !is.na(endDate) && startDate == endDate ){
+      message("Note: The g/graph plottype is by days.  You have chosen same start/end date, so a line plot cannot be produced.")
+    }
+
+
+    ggplot2::ggplot( data=wvarSum, aes( x = utc_dt, y = y, color=pwsid ) ) +
+      ggplot2::geom_line() +
+      ggplot2::xlab('Date') +
+      ggplot2::ylab( paste0(aggtype," of ",wvar) ) +
+      ggplot2::theme(
         panel.background = ggplot2::element_rect(fill = 'white', color = 'black')
         ,legend.box.background = ggplot2::element_rect(fill = 'white', color='white')
         ,legend.key = ggplot2::element_rect(fill = 'white')
