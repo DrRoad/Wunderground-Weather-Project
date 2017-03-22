@@ -137,8 +137,8 @@ First we will query the history available by using a start and end date applied 
 myweather <- queryHistory(
   myKey = mywukey
   ,nearbyStations = pwsr6$getTibble()
-  ,startDate = '2017-03-17'
-  ,endDate = '2017-03-20'
+  ,startDate = '2017-03-15'
+  ,endDate = '2017-03-17'
 )    
 
 
@@ -160,7 +160,7 @@ plotWeather(
 )
 ```
 
-Here we see much more differentiation, as the area most near the Pacific Ocean shows the least amount of variability, given the regulation of temperature that the massive body of water provides.
+Here we see much more differentiation, as the area most closest to the Pacific Ocean at Imperial Beach shows the least amount of variability, given the regulation of temperature that the massive body of water provides. Compare this to the variation at Lemon Grove, near the mountains further inland.
 
 Now let us see if we can see any differentiation by looking at the minimum humidity across the time period.
 
@@ -172,9 +172,9 @@ plotWeather(
 )
 ```
 
-What is most telling here is the very low mimimum % humidity of 39 in the inland area, which is neither bordering the ocean, nor in the mountains, and is known to be desert-like.
+Here again we see the influence of proximity to the water.  The areas at Imperial Beach and northwest of Coronado both have minimum humidities of over 85%.  Meanwhile, the inland Lemon Grove area had a mimimum 20% lower.
 
-The plotWeather function also provides the ability to see a traditional line graph of conditions across time, rather than just a singular aggregate value. The following funcion call will look.
+The plotWeather function also provides the ability to see a traditional line graph of conditions across time, rather than just a singular aggregate value. The following funcion call will look just at the average temperatue.  This can be used in combination with the original map plot of PWSs.
 
 ```{r plotWeatherGraph}
 plotWeather(
