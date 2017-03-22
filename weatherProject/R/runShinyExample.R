@@ -4,7 +4,11 @@
 
 #' @importFrom shiny runApp
 #' @export
-runExample <- function() {
+#' 
+##
+## begin nan code
+##
+runShinyExample <- function() {
   appDir <- system.file("shiny-examples", "shinyApp.R", package = "weatherProject")
   if (appDir == "") {
     stop("Could not find example directory.", call. = FALSE)
@@ -12,3 +16,7 @@ runExample <- function() {
   
   shiny::runApp(appDir, display.mode = "normal")
 }
+
+##
+## end nan code
+##

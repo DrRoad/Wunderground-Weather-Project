@@ -13,6 +13,9 @@
 
 #' @name weatherProject
 NULL
+##
+## start nan code 
+##
 
 utils::globalVariables(names = c("id",
                                  "utc_date_time",
@@ -45,3 +48,6 @@ utils::globalVariables(names = c("id",
                                  "distance_km"))
 							
 
+##
+## end nan code 
+##

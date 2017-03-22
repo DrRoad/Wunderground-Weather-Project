@@ -13,6 +13,10 @@
 #' @importFrom dplyr filter
 #' @importFrom plyr rbind.fill
 #'
+
+##
+## start nan code 
+##
 queryHistory <-
   function(myKey, nearbyStations, startDate, endDate) {
     # Due to call limit per day, we limit the max num of pws per city
@@ -47,3 +51,6 @@ queryHistory <-
     combinedData
   }
 
+##
+## end nan code 
+##

@@ -12,6 +12,9 @@
 #' @examples
 #' longlat("San Francisco, US")
 
+##
+## start nan code 
+##
 longlat <- function(addr) {
   # remove empty space from addr to prepare for query
   addr <- gsub(' ', '', addr)
@@ -34,3 +37,6 @@ longlat <- function(addr) {
   }
   return(coord)
 }
+##
+## end nan code 
+##

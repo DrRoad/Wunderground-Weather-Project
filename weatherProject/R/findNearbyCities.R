@@ -14,6 +14,10 @@
 #'
 #' @examples
 #' findNearbyCities('nan_stat290', longlat('San Francisco, CA'), '100', '5')
+
+##
+## start nan code 
+##
 findNearbyCities <-
   function(username,
            coord,
@@ -70,3 +74,6 @@ findNearbyCities <-
     }
     nearbyCities
   }
+##
+## end nan code 
+##

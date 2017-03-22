@@ -15,7 +15,9 @@
 #' @examples
 #' queryData("407e6151ab7de146", "KCASANFR699", Sys.Date()-1)
 
-
+##
+## start nan code 
+##
 # function to extract weather data for individual PWS
 queryData <- function(myKey, pwsid, qTime) {
   wuApiPrefix <- "http://api.wunderground.com/api/"
@@ -76,3 +78,6 @@ queryData <- function(myKey, pwsid, qTime) {
   tibble::as_tibble(weatherData)
   
 }
+##
+## end nan code 
+##

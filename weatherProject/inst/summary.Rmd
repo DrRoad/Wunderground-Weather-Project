@@ -2,7 +2,9 @@
 title: "Weather Project Package Report"
 author: "Michael Caldwell & Nan Bai"
 date: "March 20, 2017"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -137,8 +139,8 @@ First we will query the history available by using a start and end date applied 
 myweather <- queryHistory(
   myKey = mywukey
   ,nearbyStations = pwsr6$getTibble()
-  ,startDate = '2017-03-15'
-  ,endDate = '2017-03-17'
+  ,startDate = '2017-03-17'
+  ,endDate = '2017-03-20'
 )    
 
 
@@ -160,7 +162,7 @@ plotWeather(
 )
 ```
 
-Here we see much more differentiation, as the area most closest to the Pacific Ocean at Imperial Beach shows the least amount of variability, given the regulation of temperature that the massive body of water provides. Compare this to the variation at Lemon Grove, near the mountains further inland.
+Here we see much more differentiation, as the area most near the Pacific Ocean shows the least amount of variability, given the regulation of temperature that the massive body of water provides.
 
 Now let us see if we can see any differentiation by looking at the minimum humidity across the time period.
 
@@ -172,9 +174,9 @@ plotWeather(
 )
 ```
 
-Here again we see the influence of proximity to the water.  The areas at Imperial Beach and northwest of Coronado both have minimum humidities of over 85%.  Meanwhile, the inland Lemon Grove area had a mimimum 20% lower.
+What is most telling here is the very low mimimum % humidity of 39 in the inland area, which is neither bordering the ocean, nor in the mountains, and is known to be desert-like.
 
-The plotWeather function also provides the ability to see a traditional line graph of conditions across time, rather than just a singular aggregate value. The following funcion call will look just at the average temperatue.  This can be used in combination with the original map plot of PWSs.
+The plotWeather function also provides the ability to see a traditional line graph of conditions across time, rather than just a singular aggregate value. The following funcion call will look.
 
 ```{r plotWeatherGraph}
 plotWeather(
@@ -183,6 +185,44 @@ plotWeather(
 )
 ```
 
-## SHINY PLACEHOLDER
+## Using the summarizeData function to subset the weatherData
 
+Sometimes you might want to subset the queried weather data within a certain distance and within a time frame and calculate a certain weather parameter statistics, this is exactly the purpose of this summarizeData function. For example, for the above queried weather data, we want to limit the pws within 10km distance and we only want to see the mean temperature for the first two days for these weather stations. The following function is used to fulfil this purpose. 
+
+```{r summarizeData}
+subsetData <- summarizeData(myweather, distance = 10, startDate = '2017-03-17', endDate = '2017-03-18', param = 'temperature', unit = 'metric', calType = 'mean')
+subsetData
+```
+
+
+
+## A shiny app on top of these functions for easy adoption of this package 
+
+To facilitate the usage of this package, we built a shiny app on top of these functions. Users can launch the shiny app by calling the following function.  
+
+```{r runExample, eval = FALSE}
+runShinyExample()
+
+```
+
+For the first tab Nearby PWS, user can input the city name, country name, distance from that location, maximum number of nearby cities, and the date range with the key to access wunderground API and username to access geoname webservice, and click query button. The following three actions will be performed and the results will be displayed in the main panel:
+
+- find the longtitude and latitude of the location
+- find nearby cities within the distance 
+- find all pws within these cities
+- query weather data for all pws within the time frame
+
+Some limitation were enforced due to the query limit from Wunderground website:
+
+- The maximum date range is 5 days
+- The maximum number of nearby cities is 10 
+- The maximum number of pws per city is 5
+  
+User can click save button to save the data. Two date files pwsData_yyyymmddhhmmss.rds and weatherData_yyyymmddhhmmss.rds will be saved with timestamp for future usage. pwsData.rds contains the data frame describing the pws, while weatherData.rds contains the weather data for all these pws.
+
+![](1.png)
+
+For the second tab Weather Data, user can load the saved weatherData.rds file, specifiy the distance and date range to subset the weather data table. User can choose the weather parameter of interest, the unit (metric vs. english) and the statistics (mean/max/min/range) for visualizing on the map. The whole data table will be displayed below the graph as shown below. 
+
+![](2.png)
 

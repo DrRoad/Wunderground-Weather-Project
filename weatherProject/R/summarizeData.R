@@ -20,6 +20,9 @@
 #' data(weatherData)
 #' summarizeData(weatherData, 10, '2017-03-18', '2017-03-19', 'temperature', 'metric', 'mean')
 
+##
+## start nan code 
+##
 summarizeData <- function(weatherData, distance, startDate, endDate, param, unit, calType){
   data <- weatherData %>%
     dplyr::filter(as.Date(utc_date_time)>=startDate && as.Date(utc_date_time)<=endDate) %>%
@@ -62,3 +65,6 @@ summarizeData <- function(weatherData, distance, startDate, endDate, param, unit
   
   results
 }
+##
+## end nan code 
+##
