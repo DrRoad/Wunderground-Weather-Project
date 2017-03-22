@@ -1,5 +1,3 @@
-library(shiny)
-
 ##
 ## begin nan code
 ##
@@ -94,7 +92,7 @@ ui <- navbarPage(
 )
 
 server <- function(input, output, session) {
-  #source('userFuncs.R')
+  source('userFuncs.R')
   
   addr <- reactive(paste(input$city, input$country, sep = ','))
   coord <- eventReactive(input$query, {longlat(addr())})
@@ -185,7 +183,7 @@ server <- function(input, output, session) {
     
     input$plotWeather
     
-    pwstibble <- dplyr::distinct(data, pwsid, lat, lon, neighborhood, city, state, country, distance_km, distance_mi, .keep_all = FALSE)
+    pwstibble <- dplyr::distinct(data, id, lat, lon, neighborhood, city, state, country, distance_km, distance_mi, .keep_all = FALSE)
     results <- isolate(summarizeData(data, input$distance2,  as.character(input$date_range2[1]), as.character(input$date_range2[2]), input$weatherParameter, input$unit, input$statistics))
     allPws <- dplyr::left_join(results, pwstibble)
     
