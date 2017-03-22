@@ -1,8 +1,8 @@
 Package: weatherProject
-Title: a package to query and visualize weather data
+Title: A Package to Query and Visualize Weather Data
 Version: 1.0
 Authors@R: c(person("Nan", "Bai", email = "nancybai@stanford.edu", role = c("aut", "cre")),person("Michael", "Caldwell", email = "t.michael.caldwell@gmail.com", role = c("aut")))
-Description: query and visualize weather data.
+Description: Query and visualize weather data.
 Depends: R (>= 3.3.2)
 Imports:
     RgoogleMaps,
