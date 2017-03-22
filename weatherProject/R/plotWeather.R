@@ -2,7 +2,7 @@
 #'
 #' @description Plot weather data for visualization
 #'
-#' @param wtbl tibble or data frame of weather data must contain pwsid,lat,lon & all types of wvar
+#' @param wtbl tibble or data frame of weather data must contain id,lat,lon & all types of wvar
 #' @param plottype specify plot type. m for mapping; g for graphs.
 #' @param wvar weather var - tempm,tempi,dewptm,dewpti,pressurem,pressurei,hum, m=metric;i=english
 #' @param aggtype aggregation type to roll-up the wvar - can be mean,max,min,range
@@ -80,10 +80,10 @@ plotWeather <- function(
   #weather variable summary
   #if mapping, do not need date included
   if( plottype == "m" ){
-    wvarSum <- dplyr::group_by(mywtbl,pwsid,lat,lon)
+    wvarSum <- dplyr::group_by(mywtbl,id,lat,lon)
   }
   else if(plottype == "g"){
-    wvarSum <- dplyr::group_by(mywtbl,pwsid,dt)
+    wvarSum <- dplyr::group_by(mywtbl,id,dt)
   }
 
 
@@ -139,7 +139,7 @@ plotWeather <- function(
   #map specific
   if( plottype == "m" ){
 
-    if( length(unique(wvarSum$pwsid)) > 10){
+    if( length(unique(wvarSum$id)) > 10){
       message("Note: m/map plottype can become cluttered with over 10 PWS ids")
     }
     #define a box as shown in the package
@@ -187,7 +187,7 @@ plotWeather <- function(
     #for this need to flip the name to allow generic naming in the call (y)
     names(wvarSum)[names(wvarSum) == wvaragg] <- "y"
 
-    if( length(unique(wvarSum$pwsid)) > 5){
+    if( length(unique(wvarSum$id)) > 5){
       message("Note: g/graph plottype can become cluttered with over 5 PWS ids")
     }
 
@@ -204,7 +204,7 @@ plotWeather <- function(
     }
 
 
-    ggplot2::ggplot( data=wvarSum, aes( x = dt, y = y, color=pwsid ) ) +
+    ggplot2::ggplot( data=wvarSum, aes( x = dt, y = y, color=id ) ) +
       ggplot2::geom_line() +
       ggplot2::xlab('Date') +
       ggplot2::ylab( paste0(aggtype," of ",wvar) ) +

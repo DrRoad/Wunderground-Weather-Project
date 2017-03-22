@@ -195,7 +195,7 @@ queryData <- function(myKey, id, qTime) {
   )
   
   data <- jsonlite::fromJSON(wuURL)
-  print(wuURL)
+  #print(wuURL)
   
   weatherData <- data$history$observations
   

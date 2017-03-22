@@ -54,8 +54,8 @@ summarizeData <- function(weatherData, distance, startDate, endDate, param, unit
   
   
   results <- data %>%
-    dplyr::select(pwsid, lat, lon, colNum) %>%
-    dplyr::group_by(pwsid)
+    dplyr::select(id, lat, lon, colNum) %>%
+    dplyr::group_by(id)
   
   names(results)[4] <- 'stat'
   if (calType=='mean')  results <- dplyr::summarise_all(results, mean,  na.rm=TRUE)

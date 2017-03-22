@@ -3,7 +3,7 @@
 #' @description Query weather data for individual PWS
 #'
 #' @param myKey key for accessing Wunderground API 
-#' @param pwsid character pws ID
+#' @param id character pws ID
 #' @param qTime a specific date in history for query 
 #' 
 #' @return a tibble containing the data for that specified pws from the specified date 
@@ -19,7 +19,7 @@
 ## start nan code 
 ##
 # function to extract weather data for individual PWS
-queryData <- function(myKey, pwsid, qTime) {
+queryData <- function(myKey, id, qTime) {
   wuApiPrefix <- "http://api.wunderground.com/api/"
   wuFormat <- ".json"
   
@@ -29,13 +29,13 @@ queryData <- function(myKey, pwsid, qTime) {
     '/history_',
     gsub("-", "", qTime),
     '/q/',
-    paste0("pws:", pwsid),
+    paste0("pws:", id),
     wuFormat,
     sep = ''
   )
   
   data <- jsonlite::fromJSON(wuURL)
-  print(wuURL)
+  #print(wuURL)
   
   weatherData <- data$history$observations
   
@@ -60,9 +60,9 @@ queryData <- function(myKey, pwsid, qTime) {
   weatherData <-
     cbind(utc_date_time, weatherData, stringsAsFactors = FALSE)
   
-  addr_name <- rep(pwsid, nrow(weatherData))
+  addr_name <- rep(id, nrow(weatherData))
   weatherData <-
-    cbind(pwsid, weatherData, stringsAsFactors = FALSE)
+    cbind(id, weatherData, stringsAsFactors = FALSE)
   
   weatherData$date <- NULL
   weatherData$utcdate <- NULL
