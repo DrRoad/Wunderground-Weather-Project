@@ -2,9 +2,9 @@
 #'
 #' @description Plot weather data for visualization
 #'
-#' @param wtbl a tibble or data fram of weather data must contain pwsid,lat,lon and all type of wvar
+#' @param wtbl tibble or data frame of weather data must contain pwsid,lat,lon & all types of wvar
 #' @param plottype specify plot type. m for mapping; g for graphs.
-#' @param wvar weather parameter of interest - can have values tempm,tempi,dewptm,dewpti,pressurem,pressurei,hum, "m"s indicate metric; "i"s english
+#' @param wvar weather var - tempm,tempi,dewptm,dewpti,pressurem,pressurei,hum, m=metric;i=english
 #' @param aggtype aggregation type to roll-up the wvar - can be mean,max,min,range
 #' @param startDate start date - will be applied to the date portion of a variable called date_time
 #' @param endDate end date - will be applied to the date portion of a variable called date_time
@@ -19,7 +19,7 @@
 #' data(weatherData)
 #' plotWeather(weatherData)
 #' plotWeather(wtbl=weatherData,wvar="tempi",aggtype="max", plottype = "g")
-#' plotWeather(wtbl=weatherData,wvar="tempi",aggtype="range",startDate = '2017-03-18',endDate ='2017-03-19', plottype="m")
+#' plotWeather(wtbl=weatherData,aggtype="range",startDate = '2017-03-18',endDate ='2017-03-19')
 #' @export
 
 
@@ -140,7 +140,7 @@ plotWeather <- function(
   if( plottype == "m" ){
 
     if( length(unique(wvarSum$pwsid)) > 10){
-      message("Note: The m/map plottype can become cluttered with over 10 PWS ids")
+      message("Note: m/map plottype can become cluttered with over 10 PWS ids")
     }
     #define a box as shown in the package
     bb <- RgoogleMaps::qbbox(lat = wvarSum$lat, lon = wvarSum$lon)
@@ -188,11 +188,19 @@ plotWeather <- function(
     names(wvarSum)[names(wvarSum) == wvaragg] <- "y"
 
     if( length(unique(wvarSum$pwsid)) > 5){
-      message("Note: The g/graph plottype can become cluttered with over 5 PWS ids")
+      message("Note: g/graph plottype can become cluttered with over 5 PWS ids")
     }
 
     if( !is.na(startDate) &&  !is.na(endDate) && startDate == endDate ){
-      message("Note: The g/graph plottype is by days.  You have chosen same start/end date, so a line plot cannot be produced.")
+      message(
+        "Note: g/graph plottype is by days. Same start/end date, line/graph cannot be produced."
+      )
+    }
+
+    if( length(unique(wvarSum$dt)) == 1){
+      message(
+        "Note: g/graph plottype is by days. Results are a single day; line/graph cannot be produced."
+      )
     }
 
 

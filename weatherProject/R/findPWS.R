@@ -5,6 +5,7 @@
 #' @param myKey key to access Wunderground API
 #' @param nearbyCities a vector of city names formated as {state}/{city} for US cities and {country}/{city} for cities in other countries
 #' @param maxPerCity a numeric scalar that sets a limit on the maximum number of PWSs returned for a city that had data returned in the wunderground call
+#' @param sleeptime a numeric scalar the specifies how many seconds to wait between calls of retrieving PWS information
 #'
 #' @return a tibble descriping all PWS, which will include an id, latitude, longitude, etc.
 #'
@@ -15,10 +16,26 @@
 #'
 #'
 #' @examples
-#' findPWS('407e6151ab7de146', c("CA/San_Francisco","CA/Daly_City"))
-findPWS <- function(myKey, nearbyCities, maxPerCity=5) {
-  if (missing(myKey)) {
-    stop("please provide your key...")
+#' findPWS('407e6151ab7de146', c("CA/San_Francisco","CA/Daly_City"),sleeptime=1)
+##
+## begin mcaldwel code
+##
+findPWS <- function(myKey, nearbyCities, maxPerCity=5, sleeptime=10) {
+  if( missing(myKey) ) {
+    stop("PLEASE PROVIDE YOUR KEY...")
+  }
+  if(
+    length(maxPerCity) != 1
+    | ( !is.na(maxPerCity) & !is.numeric(maxPerCity) )
+  ){
+    stop("maxPerCity MUST BE A SCALAR OF LENGTH 1 EVEN IF NA, & NUMERIC SCALAR IF NOT NA")
+  }
+  if(
+    length(sleeptime) != 1
+    | is.na(sleeptime)
+    | !is.numeric(sleeptime)
+  ){
+    stop("sleeptime MUST BE A NUMERIC SCALAR OF LENGTH 1 AND NOT NA")
   }
   wuApiPrefix <- "http://api.wunderground.com/api/"
   wuFormat <- ".json"
@@ -28,9 +45,7 @@ findPWS <- function(myKey, nearbyCities, maxPerCity=5) {
   citseq <- NULL
 
 
-##
-## begin mcaldwel code
-##
+
   #some calls will not result in good data
   for (i in 1:length(nearbyCities)) {
     callAddress <-
@@ -40,7 +55,7 @@ findPWS <- function(myKey, nearbyCities, maxPerCity=5) {
              nearbyCities[i],
              wuFormat)
     callData <- jsonlite::fromJSON(callAddress)
-    Sys.sleep(10)
+    Sys.sleep(sleeptime)
     #print(callAddress)
 
     #check for pws element before attempting to capture
